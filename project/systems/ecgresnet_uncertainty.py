@@ -9,9 +9,8 @@ from torch.utils.data import DataLoader, random_split
 import pytorch_lightning as pl
 from pytorch_lightning.metrics import functional as FM
 
-from uncertainty.network.ecgresnet import ECGResNet
-from ecgnet.utils.loss import SoftmaxFocalLoss
-from uncertainty.utils.focalloss_weights import FocalLoss
+from network.ecgresnet import ECGResNet
+from utils.focalloss_weights import FocalLoss
 
 class ECGResNetUncertaintySystem(pl.LightningModule):
 
@@ -32,8 +31,6 @@ class ECGResNetUncertaintySystem(pl.LightningModule):
         else:
             weights = loss_weights
 
-        # self.loss = SoftmaxFocalLoss(gamma=1, weights=weights)
-        # self.loss = FocalLoss(gamma=1, weights = torch.tensor(train_params['loss_weights'], dtype = torch.float)
         self.loss = FocalLoss(gamma=1, weights = weights)
 
     def forward(self, x):
@@ -89,3 +86,7 @@ class ECGResNetUncertaintySystem(pl.LightningModule):
         parser.add_argument('--model_name', type=str, default='none_none')
         parser.add_argument('--ensembling_method', type=bool, default=False)
         return parser
+
+    def save_results(self):
+        pass
+        

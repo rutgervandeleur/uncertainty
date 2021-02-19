@@ -19,8 +19,8 @@ from sklearn.preprocessing import label_binarize
 import numpy as np
 import pandas as pd
 
-from uncertainty.utils.helpers import convert_predictions_to_expert_categories, convert_variances_to_expert_categories
-from uncertainty.network.ecgresnet import BasicBlock, Flatten
+from utils.helpers import convert_predictions_to_expert_categories, convert_variances_to_expert_categories
+from network.ecgresnet import BasicBlock, Flatten
 
 class ECGResNet_AuxOut(nn.Module):
     """

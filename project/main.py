@@ -16,17 +16,17 @@ from pytorch_lightning import loggers as pl_loggers
 import json
 import pandas as pd
 
-from ecgnet.utils.dataset import UniversalECGDataset
+from utils.dataset import UniversalECGDataset
 # from uncertainty.systems.triage_ecgresnet_uncertainty import TriageECGResNetUncertaintySystem
-from uncertainty.systems.ecgresnet_uncertainty import ECGResNetUncertaintySystem
-from uncertainty.systems.ecgresnet_auxout import ECGResNetAuxOutSystem
-from uncertainty.systems.ecgresnet_mcdropout import ECGResNetMCDropoutSystem
-from uncertainty.systems.ecgresnet_ensemble import ECGResNetEnsembleSystem
-from uncertainty.systems.ecgresnet_ssensemble import ECGResNetSnapshotEnsembleSystem
-from uncertainty.systems.ecgresnet_varinf import ECGResNetVariationalInferenceSystem
-from uncertainty.utils.dataloader import CPSC2018Dataset
-from uncertainty.utils.transforms import ToTensor, Resample
-from uncertainty.utils.transforms import ApplyGain
+from systems.ecgresnet_uncertainty import ECGResNetUncertaintySystem
+from systems.ecgresnet_auxout import ECGResNetAuxOutSystem
+from systems.ecgresnet_mcdropout import ECGResNetMCDropoutSystem
+from systems.ecgresnet_ensemble import ECGResNetEnsembleSystem
+from systems.ecgresnet_ssensemble import ECGResNetSnapshotEnsembleSystem
+from systems.ecgresnet_varinf import ECGResNetVariationalInferenceSystem
+from utils.dataloader import CPSC2018Dataset
+from utils.transforms import ToTensor, Resample
+from utils.transforms import ApplyGain
 
 def main(args, ECGResNet_params, model_class):
 

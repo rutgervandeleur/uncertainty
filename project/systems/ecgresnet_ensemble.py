@@ -14,10 +14,9 @@ import pytorch_lightning as pl
 from pytorch_lightning.core.step_result import TrainResult
 from pytorch_lightning.metrics import functional as FM
 
-from uncertainty.network.ecgresnet import ECGResNet
-from ecgnet.utils.loss import SoftmaxFocalLoss
-from uncertainty.utils.helpers import create_results_directory
-from uncertainty.utils.focalloss_weights import FocalLoss
+from network.ecgresnet import ECGResNet
+from utils.helpers import create_results_directory
+from utils.focalloss_weights import FocalLoss
 
 class ECGResNetEnsembleSystem(pl.LightningModule):
 
