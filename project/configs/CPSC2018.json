@@ -1,0 +1,9 @@
+{
+    "data_dir": "/Users/jeroen/ECG/data/CPSC2018/validation_set",
+    "train_labels_csv": "/Users/jeroen/ECG/data/CPSC2018/validation_set/CPSC2018_REFERENCES.csv",
+    "test_labels_csv": "/Users/jeroen/ECG/data/CPSC2018/validation_set/CPSC2018_REFERENCES.csv",
+    "epochs": 60,
+    "OOD_classname": "none", 
+    "max_sample_length" : 5000,
+    "num_classes" : 9
+}

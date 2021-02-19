@@ -1,0 +1,6 @@
+{
+    "data_dir": "/Users/jeroen/ECG/ecgnet_v3/data/UMCTriage/subset_distributed",
+    "train_labels_csv": "/Users/jeroen/ECG/ecgnet_v3/data/UMCTriage/subset_distributed_train.csv",
+    "test_labels_csv": "/Users/jeroen/ECG/ecgnet_v3/data/UMCTriage/subset_distributed_test.csv",
+    "epochs": 20
+}
