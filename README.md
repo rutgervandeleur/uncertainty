@@ -27,8 +27,8 @@ pip install -r requirements.txt
 # module folder
 cd project
 
-# run module (example: mnist as your main contribution)   
-python lit_classifier_main.py    
+# run module (example: Variational inference with bayesian decomposition)   
+python main.py --epistemic_method varinf --aleatoric_method bayes-decomp
 ```
 
 ### Citation   
