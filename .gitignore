@@ -130,3 +130,6 @@ MNIST
 
 # Swap files
 *.swp
+
+# Results directory
+project/results
