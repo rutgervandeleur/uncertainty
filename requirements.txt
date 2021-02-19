@@ -22,9 +22,9 @@ joblib
 kiwisolver
 Markdown
 matplotlib
-mkl-fft==1.2.0
-mkl-random==1.1.1
-mkl-service==2.3.0
+#mkl-fft
+#mkl-random
+#mkl-service
 multidict
 numpy
 oauthlib==3.1.0
@@ -41,7 +41,7 @@ pyOpenSSL
 pyparsing
 PySocks
 python-dateutil
-pytorch-lightning==1.2.0
+pytorch-lightning==1.1.0
 pytz
 PyYAML==5.4.1
 requests
@@ -53,7 +53,7 @@ six
 tensorboard
 tensorboard-plugin-wit
 torch==1.7.1
-torchaudio==0.7.0a0+a853dff
+torchaudio==0.7.2
 torchvision==0.8.2
 tornado
 tqdm
