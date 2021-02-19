@@ -1,7 +1,6 @@
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
-from torchnet.logger import VisdomPlotLogger, VisdomLogger
 
 import time
 import sys
@@ -12,8 +11,6 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch.nn import init
 import torch.optim as optim
-import torchnet as tnt
-from torchnet.engine import Engine
 from sklearn.metrics import roc_auc_score
 from sklearn.preprocessing import label_binarize
 

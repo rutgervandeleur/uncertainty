@@ -129,4 +129,4 @@ MNIST
 .DS_Store
 
 # Swap files
-.swp
+*.swp

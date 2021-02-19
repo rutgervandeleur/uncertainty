@@ -1,7 +1,6 @@
 import sys
 import os
 import torch
-from icecream import ic
 import pandas as pd
 import datetime
 from argparse import ArgumentParser
@@ -10,7 +9,6 @@ import torch.nn.functional as F
 from torch.utils.data import DataLoader, random_split
 
 import pytorch_lightning as pl
-from pytorch_lightning.core.step_result import TrainResult
 from pytorch_lightning.metrics import functional as FM
 
 from network.ecgresnet_mcdropout import ECGResNet_MCDropout

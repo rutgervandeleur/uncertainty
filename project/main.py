@@ -4,7 +4,6 @@ import os
 import torch
 from torch.utils.data import DataLoader
 from torchvision import transforms
-from icecream import ic
 
 from argparse import ArgumentParser
 import pytorch_lightning as pl
@@ -17,7 +16,6 @@ import json
 import pandas as pd
 
 from utils.dataset import UniversalECGDataset
-# from uncertainty.systems.triage_ecgresnet_uncertainty import TriageECGResNetUncertaintySystem
 from systems.ecgresnet_uncertainty import ECGResNetUncertaintySystem
 from systems.ecgresnet_auxout import ECGResNetAuxOutSystem
 from systems.ecgresnet_mcdropout import ECGResNetMCDropoutSystem

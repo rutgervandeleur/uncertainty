@@ -25,7 +25,6 @@ import scipy
 import scipy.io
 from scipy import signal
 import sys
-from icecream import ic
 import random
 from scipy import misc
 import matplotlib.pyplot as plt
