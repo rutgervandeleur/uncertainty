@@ -9,6 +9,7 @@ certifi==2020.12.5
 cffi
 chardet
 click==7.1.2
+coverage
 cryptography
 cycler==0.10.0
 fsspec
