@@ -60,7 +60,7 @@ jobs:
         pip list
       shell: bash
 
-         - name: Tests
+    - name: Tests
       run: |
         coverage run --source project -m py.test project tests -v --junitxml=junit/test-results-${{ runner.os }}-${{ matrix.python-version }}.xml
 
