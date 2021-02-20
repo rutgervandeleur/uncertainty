@@ -28,6 +28,7 @@ class ECGResNetVariationalInferenceSystem(pl.LightningModule):
         self.kl_weighting_type = kl_weighting_type
         self.kl_weighting_scheme = kl_weighting_scheme
         self.max_epochs = max_epochs
+
         self.train_dataset_size = train_dataset_size
         self.val_dataset_size = val_dataset_size
         self.batch_size = batch_size 
