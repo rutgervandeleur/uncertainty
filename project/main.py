@@ -22,6 +22,7 @@ from systems.ecgresnet_mcdropout import ECGResNetMCDropoutSystem
 from systems.ecgresnet_ensemble import ECGResNetEnsembleSystem
 from systems.ecgresnet_ssensemble import ECGResNetSnapshotEnsembleSystem
 from systems.ecgresnet_varinf import ECGResNetVariationalInferenceSystem
+from systems.ecgresnet_ensemble_auxout import ECGResNetEnsemble_AuxOutSystem
 from utils.dataloader import CPSC2018Dataset
 from utils.transforms import ToTensor, Resample
 from utils.transforms import ApplyGain
