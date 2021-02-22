@@ -23,6 +23,7 @@ from systems.ecgresnet_ensemble import ECGResNetEnsembleSystem
 from systems.ecgresnet_ssensemble import ECGResNetSnapshotEnsembleSystem
 from systems.ecgresnet_varinf import ECGResNetVariationalInferenceSystem
 from systems.ecgresnet_ensemble_auxout import ECGResNetEnsemble_AuxOutSystem
+from systems.ecgresnet_ssensemble_auxout import ECGResNetSnapshotEnsemble_AuxOutSystem
 from utils.dataloader import CPSC2018Dataset
 from utils.transforms import ToTensor, Resample
 from utils.transforms import ApplyGain
@@ -127,7 +128,7 @@ def get_model_class(args):
             # none_none
             return ECGResNetUncertaintySystem
 
-    elif temp_args.aleatoric_method == 'aux-out':
+    elif temp_args.aleatoric_method == 'auxout':
         if temp_args.epistemic_method == 'none':
             # none_auxout
             return ECGResNetAuxOutSystem
@@ -142,7 +143,7 @@ def get_model_class(args):
 
         elif temp_args.epistemic_method == 'ssensemble':
             # ssensemble_auxout
-            model = SnapshotEnsemble_AuxOutSystem
+            return ECGResNetSnapshotEnsemble_AuxOutSystem
 
     elif temp_args.aleatoric_method == 'bayes-decomp':
         # varinf_bayes-decomp

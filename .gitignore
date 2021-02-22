@@ -133,3 +133,6 @@ MNIST
 
 # Results directory
 project/results
+
+# Model weights directory
+weights
