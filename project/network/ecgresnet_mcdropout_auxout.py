@@ -10,8 +10,6 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
-import torchnet as tnt
-from torchnet.engine import Engine
 
 import numpy as np
 import pandas as pd
