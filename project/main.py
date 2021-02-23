@@ -24,6 +24,7 @@ from systems.ecgresnet_ssensemble import ECGResNetSnapshotEnsembleSystem
 from systems.ecgresnet_varinf import ECGResNetVariationalInferenceSystem
 from systems.ecgresnet_ensemble_auxout import ECGResNetEnsemble_AuxOutSystem
 from systems.ecgresnet_ssensemble_auxout import ECGResNetSnapshotEnsemble_AuxOutSystem
+from systems.ecgresnet_mcdropout_auxout import ECGResNetMCDropout_AuxOutSystem
 from utils.dataloader import CPSC2018Dataset
 from utils.transforms import ToTensor, Resample
 from utils.transforms import ApplyGain
@@ -139,7 +140,7 @@ def get_model_class(args):
 
         elif temp_args.epistemic_method == 'mcdropout':
             # mcdropout_auxout
-            return ECGResNetAuxOutput_MCDropoutSystem
+            return ECGResNetMCDropout_AuxOutSystem
 
         elif temp_args.epistemic_method == 'ssensemble':
             # ssensemble_auxout

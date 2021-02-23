@@ -16,6 +16,7 @@ from systems.ecgresnet_ssensemble import ECGResNetSnapshotEnsembleSystem
 from systems.ecgresnet_varinf import ECGResNetVariationalInferenceSystem
 from systems.ecgresnet_ensemble_auxout import ECGResNetEnsemble_AuxOutSystem
 from systems.ecgresnet_ssensemble_auxout import ECGResNetSnapshotEnsemble_AuxOutSystem
+from systems.ecgresnet_mcdropout_auxout import ECGResNetMCDropout_AuxOutSystem
 
 class TestModelInits(unittest.TestCase):
     def test_ensemble_init(self):
@@ -100,7 +101,20 @@ class TestModelInits(unittest.TestCase):
         model = ECGResNetSnapshotEnsemble_AuxOutSystem(**merged_dict)
 
         self.assertTrue(isinstance(model, ECGResNetSnapshotEnsemble_AuxOutSystem))
- 
+
+    def test_ssensemble_auxout_init(self):
+        seed_everything(1234)
+        parser, ECGResNet_params = get_args()
+        parser = ECGResNetMCDropout_AuxOutSystem.add_model_specific_args(parser)
+        args = parser.parse_args()
+        merged_dict = {**vars(args), **ECGResNet_params}
+        merged_dict['train_dataset_size'] = 1337 # arbitrary number for init
+        merged_dict['val_dataset_size'] = 1337 # arbitrary number for init
+
+        model = ECGResNetMCDropout_AuxOutSystem(**merged_dict)
+
+        self.assertTrue(isinstance(model, ECGResNetMCDropout_AuxOutSystem))
+
 def get_args():
     parser = ArgumentParser()
     parser = Trainer.add_argparse_args(parser)
