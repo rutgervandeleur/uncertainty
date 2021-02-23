@@ -15,7 +15,7 @@ from network.ecgresnet_varinf import ECGResNet_VariationalInference, kldiv, get_
 from utils.helpers import create_results_directory
 from utils.focalloss_weights import FocalLoss
 
-class ECGResNetVariationalInferenceSystem(pl.LightningModule):
+class ECGResNetVariationalInference_BayesianDecompositionSystem(pl.LightningModule):
 
     def __init__(self, in_length, in_channels, n_grps, N, 
                  num_classes, dropout, first_width, stride, 
@@ -39,6 +39,8 @@ class ECGResNetVariationalInferenceSystem(pl.LightningModule):
         self.predicted_labels = torch.empty(0).type(torch.LongTensor)
         self.correct_predictions = torch.empty(0).type(torch.BoolTensor)
         self.epistemic_uncertainty = torch.empty(0).type(torch.FloatTensor)
+        self.aleatoric_uncertainty = torch.empty(0).type(torch.FloatTensor)
+        self.total_uncertainty = torch.empty(0).type(torch.FloatTensor)
 
         self.model = ECGResNet_VariationalInference(in_length, in_channels, 
                                n_grps, N, num_classes, 
@@ -133,11 +135,18 @@ class ECGResNetVariationalInferenceSystem(pl.LightningModule):
         # Sample the weights and use sample to make prediction
         samples, sample_mean, sample_var, samples_no_sm, sample_mean_no_sm = self.model.sample_weights(data)
 
+        # Decompose predictive uncertainty into epistemic and aleatoric uncertainty
+        epistemic_uncertainty, aleatoric_uncertainty = decompose_uncertainty(samples, self.n_weight_samples)
+
+        total_uncertainty = epistemic_uncertainty + aleatoric_uncertainty
+
         # Get predicted labels by choosing the labels with the highest average Softmax value
         predicted_labels = sample_mean.argmax(dim=1)
 
         # Get the uncertainty of the predicted labels by selecting the uncertainty of the labels with highest average Softmax value
-        predicted_labels_var = torch.gather(sample_var, 1, sample_mean.argmax(dim=1).unsqueeze_(1))[:, 0]
+        predicted_labels_epi = torch.gather(epistemic_uncertainty, 1, sample_mean.argmax(dim=1).unsqueeze_(1))[:, 0]
+        predicted_labels_ale = torch.gather(aleatoric_uncertainty, 1, sample_mean.argmax(dim=1).unsqueeze_(1))[:, 0]
+        predicted_labels_total = torch.gather(total_uncertainty, 1, sample_mean.argmax(dim=1).unsqueeze_(1))[:, 0]
 
         correct_predictions = torch.eq(predicted_labels, target)
 
@@ -151,7 +160,9 @@ class ECGResNetVariationalInferenceSystem(pl.LightningModule):
         self.IDs = torch.cat((self.IDs, batch['id']), 0)
         self.predicted_labels = torch.cat((self.predicted_labels, predicted_labels), 0)
         self.correct_predictions = torch.cat((self.correct_predictions, correct_predictions), 0)
-        self.epistemic_uncertainty = torch.cat((self.epistemic_uncertainty, predicted_labels_var), 0)
+        self.epistemic_uncertainty = torch.cat((self.epistemic_uncertainty, predicted_labels_epi), 0)
+        self.aleatoric_uncertainty = torch.cat((self.aleatoric_uncertainty, predicted_labels_ale), 0)
+        self.total_uncertainty = torch.cat((self.total_uncertainty, predicted_labels_total), 0)
 
         return {'test_loss': test_loss.item(), 'test_acc': acc.item(), 'test_loss': test_loss.item()}
 
@@ -177,6 +188,8 @@ class ECGResNetVariationalInferenceSystem(pl.LightningModule):
             pd.DataFrame(self.predicted_labels.numpy(), columns= ['predicted_label']),
             pd.DataFrame(self.correct_predictions.numpy(), columns= ['correct_prediction']),
             pd.DataFrame(self.epistemic_uncertainty.numpy(), columns= ['epistemic_uncertainty']), 
+            pd.DataFrame(self.aleatoric_uncertainty.numpy(), columns= ['aleatoric_uncertainty']), 
+            pd.DataFrame(self.total_uncertainty.numpy(), columns= ['total_uncertainty']), 
         ], axis=1)
 
         create_results_directory()

@@ -22,6 +22,7 @@ from systems.ecgresnet_mcdropout import ECGResNetMCDropoutSystem
 from systems.ecgresnet_ensemble import ECGResNetEnsembleSystem
 from systems.ecgresnet_ssensemble import ECGResNetSnapshotEnsembleSystem
 from systems.ecgresnet_varinf import ECGResNetVariationalInferenceSystem
+from systems.ecgresnet_varinf_bayesdecomp import ECGResNetVariationalInference_BayesianDecompositionSystem
 from systems.ecgresnet_ensemble_auxout import ECGResNetEnsemble_AuxOutSystem
 from systems.ecgresnet_ssensemble_auxout import ECGResNetSnapshotEnsemble_AuxOutSystem
 from systems.ecgresnet_mcdropout_auxout import ECGResNetMCDropout_AuxOutSystem
@@ -146,7 +147,7 @@ def get_model_class(args):
             # ssensemble_auxout
             return ECGResNetSnapshotEnsemble_AuxOutSystem
 
-    elif temp_args.aleatoric_method == 'bayes-decomp':
+    elif temp_args.aleatoric_method == 'bayesdecomp':
         # varinf_bayes-decomp
         return ECGResNetVariationalInference_BayesianDecompositionSystem
 

@@ -14,6 +14,7 @@ from systems.ecgresnet_mcdropout import ECGResNetMCDropoutSystem
 from systems.ecgresnet_ensemble import ECGResNetEnsembleSystem
 from systems.ecgresnet_ssensemble import ECGResNetSnapshotEnsembleSystem
 from systems.ecgresnet_varinf import ECGResNetVariationalInferenceSystem
+from systems.ecgresnet_varinf_bayesdecomp import ECGResNetVariationalInference_BayesianDecompositionSystem
 from systems.ecgresnet_ensemble_auxout import ECGResNetEnsemble_AuxOutSystem
 from systems.ecgresnet_ssensemble_auxout import ECGResNetSnapshotEnsemble_AuxOutSystem
 from systems.ecgresnet_mcdropout_auxout import ECGResNetMCDropout_AuxOutSystem
@@ -114,6 +115,19 @@ class TestModelInits(unittest.TestCase):
         model = ECGResNetMCDropout_AuxOutSystem(**merged_dict)
 
         self.assertTrue(isinstance(model, ECGResNetMCDropout_AuxOutSystem))
+
+    def test_ssensemble_auxout_init(self):
+        seed_everything(1234)
+        parser, ECGResNet_params = get_args()
+        parser = ECGResNetVariationalInference_BayesianDecompositionSystem.add_model_specific_args(parser)
+        args = parser.parse_args()
+        merged_dict = {**vars(args), **ECGResNet_params}
+        merged_dict['train_dataset_size'] = 1337 # arbitrary number for init
+        merged_dict['val_dataset_size'] = 1337 # arbitrary number for init
+
+        model = ECGResNetVariationalInference_BayesianDecompositionSystem(**merged_dict)
+
+        self.assertTrue(isinstance(model, ECGResNetVariationalInference_BayesianDecompositionSystem))
 
 def get_args():
     parser = ArgumentParser()
