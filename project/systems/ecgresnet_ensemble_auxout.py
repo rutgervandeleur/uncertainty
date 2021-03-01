@@ -41,10 +41,10 @@ class ECGResNetEnsemble_AuxOutSystem(pl.LightningModule):
         self.models = []
         self.optimizers = []
         for i in range(self.ensemble_size):
-            self.models.append(ECGResNet_AuxOut(in_length, in_channels, 
+            self.models.append(ECGResNet_AuxOut(in_channels, 
                                n_grps, N, num_classes, 
                                dropout, first_width, 
-                               stride, dilation, n_samples, n_logit_samples)
+                               stride, dilation)
                               )
 
         if loss_weights is not None:

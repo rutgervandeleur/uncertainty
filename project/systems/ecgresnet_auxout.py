@@ -32,10 +32,10 @@ class ECGResNetAuxOutSystem(pl.LightningModule):
         self.correct_predictions = torch.empty(0).type(torch.BoolTensor)
         self.aleatoric_uncertainty = torch.empty(0).type(torch.FloatTensor)
 
-        self.model = ECGResNet_AuxOut(in_length, in_channels, 
+        self.model = ECGResNet_AuxOut(in_channels, 
                                n_grps, N, num_classes, 
                                dropout, first_width, 
-                               stride, dilation, n_samples, n_logit_samples)
+                               stride, dilation)
 
         if loss_weights is not None:
             weights = torch.tensor(loss_weights, dtype = torch.float)
