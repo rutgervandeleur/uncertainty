@@ -17,21 +17,24 @@ from sklearn.preprocessing import label_binarize
 import numpy as np
 import pandas as pd
 
-from .ecgresnet import *
-from utils.helpers import convert_predictions_to_expert_categories, convert_variances_to_expert_categories
+from .ecgresnet import Flatten
 
 class BayesLinear(nn.Module):
     """
-    This class implements a Bayesian Linear layer.
+    This class implements a Bayesian Linear layer, which has a distribution instead of weights. 
     """
     def __init__(self, in_features, out_features, bias=True, log_sigma_prior=-5,
                  mu_prior=-1):
         """
-        Initializes BayesLinear layer. 
+        Initializes a BayesLinear layer. 
 
         Args:
-            
-           """
+            in_features: number of input features
+            out_features: number of output features
+            bias: whether to add bias  
+            log_sigma_prior: the initial value of the standard deviation of the distribution
+            mu_prior: the initial value of the mean of the distribution
+        """
         super(BayesLinear, self).__init__()
 
         self.in_features = in_features
@@ -40,22 +43,15 @@ class BayesLinear(nn.Module):
         # Initialize the parameters mu and sigma which will aproximate the Bayesian posterior
         self.w_mu = nn.Parameter(torch.Tensor(out_features, in_features))
         
-        # Model the log sigma, so the variance will always be positive
+        # Model the log of sigma, so the variance will always be positive
         self.w_log_sigma = nn.Parameter(torch.Tensor(out_features, in_features))
         
         # Initial mu prior
-        #self.mu_prior = torch.Tensor(out_features, in_features)
         self.mu_prior_init = mu_prior
 
         # Initial log sigma prior
-        #self.log_sigma_prior = torch.Tensor(out_features, in_features)
-        #self.log_sigma_prior_init = log_sigma_prior
         self.log_sigma_prior_init = log_sigma_prior
 
-        # Initialize the log variance uniformly, the exponent will be around 0
-        #init.kaiming_uniform_(self.mu_prior, a=math.sqrt(5))
-        #init.uniform_(self.log_sigma_prior, self.log_sigma_prior_init-0.1, self.log_sigma_prior_init)
-                
         if bias == True:
             self.bias = nn.Parameter(torch.Tensor(out_features))
 
@@ -63,6 +59,9 @@ class BayesLinear(nn.Module):
 
 
     def reset_parameters(self):
+        """
+        Resets the parameters of the layer
+        """
         # ReLU activations are used, so init using Kaiming initialisation
         init.kaiming_uniform_(self.w_mu, a=math.sqrt(5))
         
@@ -75,17 +74,16 @@ class BayesLinear(nn.Module):
 
     def forward(self, input):
         """
-        Performs forward pass of the input.
-
+        Performs a forward pass of the input. Uses the Reparemetrization trick proposed by Kingma et al. 
+        in "Variational Dropout and the Local Reparameterization trick" to sample directly from the activations.
+        
         Args:
-          x: 
-        Returns:
-          out: 
+            input: the input to be forwarded
         """
 
         # Calculate activations
         act_mu = F.linear(input, self.w_mu, self.bias)
-        act_sigma = torch.sqrt(F.linear(input ** 2, torch.exp(self.w_log_sigma) ** 2) + 1e-8)
+        act_sigma = torch.sqrt(F.linear(input ** 2, torch.exp(self.w_log_sigma) ** 2) + 1e-8) # add 1e-8 for numerical stability
         
         # Sample from unit gaussian
         epsilon = torch.randn_like(act_mu)
@@ -94,6 +92,9 @@ class BayesLinear(nn.Module):
         return act_mu + act_sigma * epsilon
         
     def kl(self):
+        """
+        Returns the Kullback-Leibler divergence between the prior and the posterior of Bayesian layer.
+        """
         return calculate_kl(torch.Tensor([self.mu_prior_init]), torch.exp(torch.Tensor([self.log_sigma_prior_init])),
                             self.w_mu, torch.exp(self.w_log_sigma))
 
@@ -105,10 +106,17 @@ class BayesConv1d(nn.Module):
                  dilation, bias=True, log_sigma_prior=-5,
                  mu_prior=-1):
         """
-        Initializes BayesLinear layer. 
+        Initializes BayesConv1d layer. 
 
         Args:
-            
+            in_channels: number of input channels
+            out_channels: number of output channels
+            kernel_size: size of the convolutional kernel
+            stride: stride of the convolution
+            dilation: spacing between the kernel points of the convolution
+            bias: whether to add bias  
+            log_sigma_prior: the initial value of the standard deviation of the distribution
+            mu_prior: the initial value of the mean of the distribution
            """
         super(BayesConv1d, self).__init__()
 
@@ -129,23 +137,12 @@ class BayesConv1d(nn.Module):
                                                       in_channels,
                                                       kernel_size))
         
-        #self.mu_prior  = torch.Tensor(out_channels,
-        #                              in_channels,
-        #                              kernel_size)
-        
         # Initial mu prior
         self.mu_prior_init = mu_prior
-
-        #self.log_sigma_prior  = torch.Tensor(out_channels,
-        #                              in_channels,
-        #                              kernel_size)
 
         # Initial log sigma (variance) prior
         self.log_sigma_prior_init = log_sigma_prior
 
-        #init.kaiming_uniform_(self.mu_prior, a=math.sqrt(5))
-        #init.uniform_(self.log_sigma_prior, self.log_sigma_prior_init-0.1, self.log_sigma_prior_init)
-                
         if bias == True:
             self.bias = nn.Parameter(torch.Tensor(out_channels))
         else:
@@ -154,6 +151,10 @@ class BayesConv1d(nn.Module):
 
 
     def reset_parameters(self):
+        """
+        Resets the parameters of the layer
+        """
+
         init.kaiming_uniform_(self.w_mu, a=math.sqrt(5))
         
         # Initialize the log variance uniformly, the exponent will be around 0
@@ -166,12 +167,11 @@ class BayesConv1d(nn.Module):
 
     def forward(self, input):
         """
-        Performs forward pass of the input.
-
+        Performs a forward pass of the input. Uses the Reparemetrization trick proposed by Kingma et al. 
+        in "Variational Dropout and the Local Reparameterization trick" to sample directly from the activations.
+        
         Args:
-          x: 
-        Returns:
-          out: 
+            input: the input to be forwarded
         """
 
         # Calculate activations for mu and sigma
@@ -189,6 +189,9 @@ class BayesConv1d(nn.Module):
         
     
     def kl(self):
+        """
+        Returns the Kullback-Leibler divergence between the prior and the posterior of Bayesian layer.
+        """
         return calculate_kl(torch.Tensor([self.mu_prior_init]), torch.exp(torch.Tensor([self.log_sigma_prior_init])),
                             self.w_mu, torch.exp(self.w_log_sigma))
 
@@ -205,6 +208,8 @@ class BayesBasicBlock(nn.Module):
           out_channels: number of output channels
           stride: stride of the convolution
           dropout: probability of an argument to get zeroed in the dropout layer
+          dilation: spacing between the kernel points of the convolution
+          num_branches: number of branches of the block
         """
         super(BayesBasicBlock, self).__init__()
         kernel_size = 5
@@ -262,7 +267,7 @@ class BayesBasicBlock(nn.Module):
 
 class ECGResNet_VariationalInference(nn.Module):
     """
-    This class implements the ECG-ResNet using variational inference in PyTorch.
+    This class implements the ECG-ResNet using Bayesian layers in PyTorch.
     It handles the different layers and parameters of the model.
     Once initialized an ResNet object can perform forward.
     """
@@ -275,8 +280,13 @@ class ECGResNet_VariationalInference(nn.Module):
           in_channels: number of channels of input
           n_grps: number of ResNet groups
           N: number of blocks per groups
-          num_classes: number of classes of the classification problem
+          dropout: probability of an argument to get zeroed in the dropout layer
+          first_width: width of the first input
           stride: tuple with stride value per block per group
+          dilation: spacing between the kernel points of the convolution
+          n_weight_samples: number of Monte Carlo samples of the weights
+          kl_weighting_type: which type of weighting to apply to the Kullback-Leibler term
+          kl_weighting_scheme: which scheme of weighting to apply to the Kullback-Leibler term
         """
         super().__init__()
         self.dropout = dropout
@@ -286,7 +296,6 @@ class ECGResNet_VariationalInference(nn.Module):
         self.n_weight_samples = n_weight_samples
         self.kl_weighting_type  = kl_weighting_type
         self.kl_weighting_scheme  = kl_weighting_scheme
-        # self.WeightedCrossEntropyLoss = nn.CrossEntropyLoss(weight=torch.Tensor(train_params['loss_weights']))
 
         num_branches = 2
         first_width = first_width * num_branches
@@ -341,6 +350,8 @@ class ECGResNet_VariationalInference(nn.Module):
           stride: stride of convolutions
           N: number of blocks per groups
           num_classes: number of classes of the classification problem
+          dilation: spacing between the kernel points of the convolutional layers
+          num_branches: number of branches of the block
         """
         group = list()
         for i in range(N):
@@ -359,8 +370,14 @@ class ECGResNet_VariationalInference(nn.Module):
         x2out = self.flatten(x2)
         return self.fc1(x1out), self.fc2(x2out)
 
-    # Takes n Monte Carlo samples of the weights 
     def sample_weights(self, data):
+        """
+        Takes n Monte Carlo samples of the weights. Calculates the mean and variance
+        over the samples.
+
+        Args:
+            data: the data point to forward
+        """
         samples = torch.empty((data.shape[0], self.n_weight_samples, self.num_classes))
         samples_no_sm = torch.empty((data.shape[0], self.n_weight_samples, self.num_classes))
         
@@ -380,8 +397,15 @@ class ECGResNet_VariationalInference(nn.Module):
         
         return samples, sample_mean, sample_var, samples_no_sm, sample_mean_no_sm
 
-    # Weights the KL term according to the weighting type
     def weight_kl(self, kl_clean, dataset_size):
+        """
+        Weights the KL term according to the weighting type
+
+        Args:
+            kl_clean: unweighted Kullback-Leibler divergence
+            dataset_size: the number of samples in the dataset
+
+        """
         
         if self.kl_weighting_type == 'dataset_size':
             kl = kl_clean / dataset_size
@@ -391,15 +415,25 @@ class ECGResNet_VariationalInference(nn.Module):
             
         return kl
 
-    def kl(self):
-        return calculate_kl(torch.Tensor([self.mu_prior_init]), torch.exp(torch.Tensor([self.log_sigma_prior_init])).to(device),self.w_mu, torch.exp(self.w_log_sigma))
 
 # kl-divergence between to univariate gaussians (p = prior, q is approximated posterior)
 def calculate_kl(mu_p, sig_p, mu_q, sig_q):
+    """
+    Calculates the Kullback-Leibler divergence between two univariate Gaussians (p and q)
+
+    Args:
+        mu_p: mean of the Gaussian p
+        sig_p: standard deviation of the Gaussian p
+        mu_q: mean of the Gaussian q
+        sig_q: standard deviation of the Gaussian q
+    """
     kl = 0.5 * (2 * torch.log(sig_p/ sig_q) - 1 + (sig_q / sig_p).pow(2) + ((mu_p - mu_q) / sig_p).pow(2)).sum()
     return kl
 
 def kldiv(model):
+    """
+    Cumulatively calculates the Kullback-Leibler divergence between the prior and the variational posterior for the whole network
+    """
     kl = torch.Tensor([0.0])
     for c in model.children():
         if hasattr(c, 'children'):
@@ -408,8 +442,13 @@ def kldiv(model):
             kl += c.kl()
     return kl
 
-# Returns the number of neurons that contribute to the kl divergence
 def get_num_kl_parameters(model):
+    """
+    Returns the number of neurons that contribute to the Kullback-Leibler divergence.
+
+    Args:
+        model: the model to obtain the number of Kullback-Leibler divergence parameters from
+    """
     count = 0
     for c in model.children():
         if hasattr(c, 'children'):
@@ -420,27 +459,46 @@ def get_num_kl_parameters(model):
 
 # Returns the number of train
 def count_parameters(model):
+    """
+    Counts the total number of trainable parameters in the model
+
+    Args:
+        model: model to count the number of trainable parameters for
+    """
     return sum(p.numel() for p in model.parameters() if p.requires_grad)
 
 
-# Decompose the predictive uncertainty into an epistemic and aleatoric part.
-# Technique described in Y. Kwon et al
-# Taken from https://openreview.net/pdf?id=Sk_P2Q9sG
-def decompose_uncertainty(predictions, T, apply_Softmax=False):
+def decompose_uncertainty(predictions, apply_Softmax=False):
+    """
+    Decomposes the predictive uncertainty into an epistemic and aleatoric part.
+    Technique described in Y. Kwon et al, taken from https://openreview.net/pdf?id=Sk_P2Q9sG
+
+    Args:
+        predictions: the outputs of the network
+        apply_Softmax: bool, whether to apply Softmax to the predictions when unactivated.
+    """
     
     # Softmax usually already done in sample_weights
     if apply_Softmax == True:
         predictions = F.Softmax(predictions, dim=1)
         
-    # Use biased variance because it the equivalent to calculations done by Shridhar
+    # Use biased variance because it is equivalent to calculations done by Shridhar
     epistemic_uncertainty = predictions.var(dim=1, unbiased=False)
     aleatoric_uncertainty = (predictions - predictions**2).mean(dim=1)
 
     return epistemic_uncertainty, aleatoric_uncertainty 
 
-# Calculates beta to control the weight of complexity cost compared to the
-# likelihood cost  
 def get_beta(batch_idx, M, beta_type, epoch=None, num_epochs=None):
+    """
+    Returns beta, which balances the weight of the complexity cost compared to the likelihood cost  
+    
+    Args:
+        batch_idx: index of the batch in the current_epoch
+        M: number of minibatches for the current_epoch (dataset_size / batch_size)
+        beta_type: which type of balancing to apply
+        epoch: index of the current epoch
+        num_epochs: total number of epochs to train for
+    """
     # M = number of minibatches
     if type(beta_type) is float:
         return beta_type

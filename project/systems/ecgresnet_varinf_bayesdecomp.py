@@ -136,7 +136,7 @@ class ECGResNetVariationalInference_BayesianDecompositionSystem(pl.LightningModu
         samples, sample_mean, sample_var, samples_no_sm, sample_mean_no_sm = self.model.sample_weights(data)
 
         # Decompose predictive uncertainty into epistemic and aleatoric uncertainty
-        epistemic_uncertainty, aleatoric_uncertainty = decompose_uncertainty(samples, self.n_weight_samples)
+        epistemic_uncertainty, aleatoric_uncertainty = decompose_uncertainty(samples)
 
         total_uncertainty = epistemic_uncertainty + aleatoric_uncertainty
 

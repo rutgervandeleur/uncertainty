@@ -28,7 +28,7 @@ pip install -r requirements.txt
 cd project
 
 # run module (example: Variational inference with bayesian decomposition)   
-python main.py --epistemic_method varinf --aleatoric_method bayes-decomp
+python main.py --epistemic_method varinf --aleatoric_method bayesdecomp
 ```
 
 ### Citation   

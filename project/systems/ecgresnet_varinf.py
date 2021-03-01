@@ -11,7 +11,7 @@ from torch.utils.data import DataLoader, random_split
 import pytorch_lightning as pl
 from pytorch_lightning.metrics import functional as FM
 
-from network.ecgresnet_varinf import ECGResNet_VariationalInference, kldiv, get_beta, decompose_uncertainty
+from network.ecgresnet_varinf import ECGResNet_VariationalInference, kldiv, get_beta
 from utils.helpers import create_results_directory
 from utils.focalloss_weights import FocalLoss
 

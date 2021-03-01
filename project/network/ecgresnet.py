@@ -16,8 +16,6 @@ from sklearn.preprocessing import label_binarize
 import numpy as np
 import pandas as pd
 
-from utils.helpers import convert_predictions_to_expert_categories, convert_variances_to_expert_categories
-
 class Flatten(nn.Module):
     def __init__(self):
         super(Flatten, self).__init__()
@@ -112,6 +110,8 @@ class ECGResNet(nn.Module):
           n_grps: number of ResNet groups
           N: number of blocks per groups
           num_classes: number of classes of the classification problem
+          dropout: probability of an argument to get zeroed in the dropout layer
+          first_width: width of the first input
           stride: tuple with stride value per block per group
           dilation: spacing between the kernel points of the convolutional layers
         """

@@ -16,32 +16,37 @@ from sklearn.preprocessing import label_binarize
 import numpy as np
 import pandas as pd
 
-from utils.helpers import convert_predictions_to_expert_categories, convert_variances_to_expert_categories
 from network.ecgresnet import BasicBlock, Flatten
 
 class ECGResNet_MCDropout(nn.Module):
     """
-    This class implements the ECG-ResNet in PyTorch.
+    This class implements the ECG-ResNet with Monte-Carlo Dropout in PyTorch.
     It handles the different layers and parameters of the model.
-    Once initialized an ResNet object can perform forward.
+    Once initialized an ResNet object can perform forward. The mc_sample function
+    can be used to estimate the epistemic uncertainty of the prediction.
     """
     def __init__(self, in_channels, n_grps, N, num_classes, dropout, first_width, 
                  stride, dilation, n_dropout_samples, sampling_dropout_rate):
         """
-        Initializes ECGResNet object. 
+        Initializes ECGResNet_MCDropout object.
 
         Args:
           in_channels: number of channels of input
           n_grps: number of ResNet groups
           N: number of blocks per groups
           num_classes: number of classes of the classification problem
+          dropout: probability of an argument to get zeroed in the dropout layer
+          first_width: width of the first input
           stride: tuple with stride value per block per group
+          dilation: spacing between the kernel points of the convolutional layers
+          n_dropout_samples: number of dropout samples to take
+          sampling_dropout_rate: the ratio of dropped-out neurons during MC sampling
         """
         super().__init__()
         self.dropout = dropout # Dropout during training
         self.softmax = nn.Softmax(dim=1)
         self.num_classes = num_classes
-        self.n_samples = n_dropout_samples
+        self.n_dropout_samples = n_dropout_samples
         self.sampling_dropout_rate = sampling_dropout_rate # Dropout during MC sampling
 
         num_branches = 2
@@ -84,10 +89,13 @@ class ECGResNet_MCDropout(nn.Module):
         Builds a group of blocks.
 
         Args:
+          N: number of blocks per groups
           in_channels: number of channels of input
           out_channels: number of channels of output
           stride: stride of convolutions
-          N: number of blocks per groups
+          dropout: probability of an argument to get zeroed in the dropout layer
+          dilation: spacing between the kernel points of the convolutional layers
+          num_branches: number of branches of the block
           num_classes: number of classes of the classification problem
         """
         group = list()
@@ -101,6 +109,9 @@ class ECGResNet_MCDropout(nn.Module):
 
     # Turn on the dropout layers
     def enable_dropout(self):
+        """
+        Turns on the dropout layers, sets the dropout rate to self.sampling_dropout_rate
+        """
         for module in self.modules():
             if module.__class__.__name__.startswith('Dropout'):
                 # Turn on dropout
@@ -111,9 +122,17 @@ class ECGResNet_MCDropout(nn.Module):
         
     # Takes n Monte Carlo samples 
     def mc_sample(self, data):
-        samples = torch.empty((data.shape[0], self.n_samples, self.num_classes))
+        """
+        Takes n Monte Carlo samples of the network by repeatedly
+        applying a dropout mask and making a prediction using
+        that mask.
+
+        Args:
+            data: data point to forward
+        """
+        samples = torch.empty((data.shape[0], self.n_dropout_samples, self.num_classes))
         
-        for i in range(self.n_samples):
+        for i in range(self.n_dropout_samples):
             # forward push
             _, output2 = self(data)
             predictions = self.softmax(output2)

@@ -15,25 +15,32 @@ import numpy as np
 import pandas as pd
 
 from network.ecgresnet import BasicBlock, Flatten
-from utils.helpers import convert_predictions_to_expert_categories, convert_variances_to_expert_categories
 
 class ECGResNet_MCDropout_AuxOutput(nn.Module):
     """
-    This class implements the ECG-ResNet in PyTorch.
+    This class implements the ECG-ResNet with Monte-Carlo dropout and Auxiliary output in PyTorch.
     It handles the different layers and parameters of the model.
     Once initialized an ResNet object can perform forward.
+    The Monte-Carlo dropout samples are used to estimate the epistemic uncertainty.
+    The Auxiliary output is used to estimate the aleatoric uncertainty.
     """
     def __init__(self, in_channels, n_grps, N, num_classes, dropout, first_width, 
                  stride, dilation, n_dropout_samples, sampling_dropout_rate, n_logit_samples, train=False):
         """
-        Initializes ECGResNet object. 
+        Initializes ECGResNet_MCDropout_AuxOutput object. 
 
         Args:
           in_channels: number of channels of input
           n_grps: number of ResNet groups
           N: number of blocks per groups
           num_classes: number of classes of the classification problem
+          dropout: probability of an argument to get zeroed in the dropout layer
+          first_width: width of the first input
           stride: tuple with stride value per block per group
+          dilation: spacing between the kernel points of the convolutional layers
+          n_dropout_samples: number of dropout samples to take
+          sampling_dropout_rate: the ratio of dropped-out neurons during MC sampling
+          n_logit_samples: number of logit samples to take of the auxiliary output
         """
         super().__init__()
         num_branches = 2
@@ -81,11 +88,13 @@ class ECGResNet_MCDropout_AuxOutput(nn.Module):
         Builds a group of blocks.
 
         Args:
+          N: number of blocks per groups
           in_channels: number of channels of input
           out_channels: number of channels of output
           stride: stride of convolutions
-          N: number of blocks per groups
-          num_classes: number of classes of the classification problem
+          dropout: probability of an argument to get zeroed in the dropout layer
+          dilation: spacing between the kernel points of the convolutional layers
+          num_branches: number of branches of the block
         """
         group = list()
         for i in range(N):
@@ -114,6 +123,9 @@ class ECGResNet_MCDropout_AuxOutput(nn.Module):
    
     # Turn on the dropout layers
     def enable_dropout(self):
+        """
+        Turns on the dropout layers, sets the dropout rate to self.sampling_dropout_rate
+        """
         for module in self.modules():
             if module.__class__.__name__.startswith('Dropout'):
                 # Turn on dropout
@@ -124,6 +136,15 @@ class ECGResNet_MCDropout_AuxOutput(nn.Module):
         
     # Takes n Monte Carlo samples 
     def mc_sample_with_sample_logits(self, data):
+        """
+        Takes Monte Carlo dropout samples of the network by repeatedly
+        applying a dropout mask and making a prediction using that mask.
+        For each MC dropout sample, the logits of the network are sampled n_logit_samples times
+        to obtain the aleatoric uncertainty of the prediction.
+
+        Args:
+            data: data point to forward
+        """
         predictions = torch.empty((data.shape[0], self.n_dropout_samples, self.num_classes))
         predictions_no_sm = torch.empty((data.shape[0], self.n_dropout_samples, self.num_classes))
         log_variances = torch.empty((data.shape[0], self.n_dropout_samples, self.num_classes))
@@ -151,13 +172,20 @@ class ECGResNet_MCDropout_AuxOutput(nn.Module):
         
         return predictions, predictions_mean, predictions_var, log_variances_mean, predictions_mean_no_sm 
 
-    # Takes T samples from the logits, by corrupting the network output with
-    # Gaussian noise with variance determined by the networks auxiliary
-    # outputs. 
-    # As in "What uncertainties do we need in Bayesian deep learning for
-    # computer vision?", equation (12), first part.
-    # "In practice, we train the network to predict the log variance!"
     def sample_logits(self, T, input, log_var, average=True):
+        """
+        Takes T samples from the logits, by corrupting the network output with
+        Gaussian noise with variance determined by the networks auxiliary
+        outputs. 
+        As in "What uncertainties do we need in Bayesian deep learning for
+        computer vision?", equation (12), first part. "In practice, we train 
+        the network to predict the log variance instead of the normal variance."
+
+        Args:
+            T: number of logits samples
+            log_var: the log variance as predicted by the auxiliary output
+            average: whether to average the result
+        """
         
         # Take the exponent to get the variance
         variance = log_var.exp()
