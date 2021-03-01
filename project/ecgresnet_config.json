@@ -13,6 +13,6 @@
     "test_labels_csv": "/training/template/datasets/template_test.csv",
     "learning_rate": 0.0005,
     "batch_size": 16,
-    "max_epochs": 1
+    "max_epochs": 25
 }
 

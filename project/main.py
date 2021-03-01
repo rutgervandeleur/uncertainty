@@ -10,8 +10,6 @@ import pytorch_lightning as pl
 from pytorch_lightning import Trainer
 from pytorch_lightning import loggers as pl_loggers
 
-# from pytorch_lightning.loggers.neptune import NeptuneLogger
-
 import json
 import pandas as pd
 
@@ -76,13 +74,6 @@ def main(args, ECGResNet_params, model_class):
 
 
     # Initialize model
-
-    # Turn of automatic optimization when dealin with ensembling methods
-    # if merged_dict['ensembling_method'] == True:
-    #     ic('WEINTHEREEEE')
-    #     merged_dict['automatic_optimization'] = False
-    # ic(merged_dict)
-
     model = model_class(**merged_dict)
     print('Initialized {}'.format(model.__class__.__name__))
 
@@ -101,8 +92,6 @@ def main(args, ECGResNet_params, model_class):
 
     # Save model
     model.save_results()
-
-    # Now make prediction with model and return uncertainty
     tb_logger.save()
 
 
@@ -115,11 +104,11 @@ def get_model_class(args):
             return ECGResNetEnsembleSystem
 
         elif temp_args.epistemic_method == 'mcdropout':
-            #mcdropout_none
+            # mcdropout_none
             return ECGResNetMCDropoutSystem
 
         elif temp_args.epistemic_method == 'varinf':
-            #varinf_none
+            # varinf_none
             return ECGResNetVariationalInferenceSystem
         
         elif temp_args.epistemic_method == 'ssensemble':
@@ -148,7 +137,7 @@ def get_model_class(args):
             return ECGResNetSnapshotEnsemble_AuxOutSystem
 
     elif temp_args.aleatoric_method == 'bayesdecomp':
-        # varinf_bayes-decomp
+        # varinf_bayesdecomp
         return ECGResNetVariationalInference_BayesianDecompositionSystem
 
 
@@ -158,7 +147,7 @@ if __name__ == '__main__':
 
     # figure out which model to use
     parser.add_argument('--epistemic_method', type=str, default='none', help='mcdropout, ensemble, ssensemble, varinf, none')
-    parser.add_argument('--aleatoric_method', type=str, default='none', help='aux-out, bayes-decomp, none')
+    parser.add_argument('--aleatoric_method', type=str, default='none', help='auxout, bayesdecomp, none')
     parser.add_argument('--dataset', type=str, default='CPSC2018', help='UMCU-Triage, CPSC2018')
 
     # THIS LINE IS KEY TO PULL THE MODEL NAME
@@ -173,7 +162,7 @@ if __name__ == '__main__':
     # Parse command-line arguments
     args = parser.parse_args()
 
-    # Turn of automatic optimization when dealin with ensembling methods
+    # Turn off automatic optimization when dealing with ensembling methods
     if args.ensembling_method == True:
         args.automatic_optimization = False
 

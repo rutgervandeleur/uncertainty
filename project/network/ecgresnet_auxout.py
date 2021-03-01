@@ -21,28 +21,31 @@ from network.ecgresnet import BasicBlock, Flatten
 
 class ECGResNet_AuxOut(nn.Module):
     """
-    This class implements the ECG-ResNet in PyTorch.
+    This class implements the ECG-ResNet with auxiliary output in PyTorch.
     It handles the different layers and parameters of the model.
     Once initialized an ResNet object can perform forward.
+    The auxiliary output allows for the estimation of aleatoric uncertainty
+    which is learned from the data.
     """
-    def __init__(self, in_length, in_channels, n_grps, N, num_classes, dropout, first_width, 
-                 stride, dilation, n_samples, n_logit_samples):
+    def __init__(self, in_channels, n_grps, N, num_classes, dropout, first_width, 
+                 stride, dilation):
         """
-        Initializes ECGResNet object. 
+        Initializes ECGResNet object with Auxiliary output for aleatoric uncertainty estimation. 
 
         Args:
           in_channels: number of channels of input
           n_grps: number of ResNet groups
           N: number of blocks per groups
           num_classes: number of classes of the classification problem
+          dropout: probability of an argument to get zeroed in the dropout layer
+          first_width: width of the first input
           stride: tuple with stride value per block per group
+          dilation: spacing between the kernel points of the convolutional layers
         """
         super().__init__()
         self.dropout = dropout # Dropout during training
         self.softmax = nn.Softmax(dim=1)
         self.num_classes = num_classes
-        self.n_samples = n_samples
-        self.n_logit_samples = n_logit_samples
         self.Gauss = torch.distributions.multivariate_normal.MultivariateNormal(torch.zeros(num_classes), torch.eye(num_classes))
 
         num_branches = 2
@@ -85,12 +88,14 @@ class ECGResNet_AuxOut(nn.Module):
         Builds a group of blocks.
 
         Args:
+          N: number of blocks per groups
           in_channels: number of channels of input
           out_channels: number of channels of output
           stride: stride of convolutions
-          N: number of blocks per groups
-          num_classes: number of classes of the classification problem
-        """
+          dropout: probability of an argument to get zeroed in the dropout layer
+          dilation: spacing between the kernel points of the convolutional layers
+          num_branches: number of branches of the block
+       """
         group = list()
         for i in range(N):
             blk = BasicBlock(in_channels=(in_channels if i == 0 else out_channels), 
@@ -100,13 +105,20 @@ class ECGResNet_AuxOut(nn.Module):
             group.append(blk)
         return group
 
-    # Takes T samples from the logits, by corrupting the network output with
-    # Gaussian noise with variance determined by the networks auxiliary
-    # outputs. 
-    # As in "What uncertainties do we need in Bayesian deep learning for
-    # computer vision?", equation (12), first part.
-    # "In practice, we train the network to predict the log variance!"
     def sample_logits(self, T, input, log_var, average=True):
+        """
+        Takes T samples from the logits, by corrupting the network output with
+        Gaussian noise with variance determined by the networks auxiliary
+        outputs. 
+        As in "What uncertainties do we need in Bayesian deep learning for
+        computer vision?", equation (12), first part. "In practice, we train 
+        the network to predict the log variance instead of the normal variance."
+
+        Args:
+            T: number of logits samples
+            log_var: the log variance as predicted by the auxiliary output
+            average: whether to average the result
+        """
         
         # Take the exponent to get the variance
         variance = log_var.exp()
@@ -140,5 +152,3 @@ class ECGResNet_AuxOut(nn.Module):
         output2_mean = logits[:, 0:self.num_classes]
         output2_log_var = logits[:, self.num_classes:]
         return self.fc1(x1out), output2_mean, output2_log_var
-
-
