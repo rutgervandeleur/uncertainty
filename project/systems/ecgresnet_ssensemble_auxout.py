@@ -18,7 +18,7 @@ from utils.focalloss_weights import FocalLoss
 
 class ECGResNetSnapshotEnsemble_AuxOutSystem(pl.LightningModule):
 
-    def __init__(self, in_length, in_channels, n_grps, N, 
+    def __init__(self, in_channels, n_grps, N, 
                  num_classes, dropout, first_width, stride, 
                  dilation, learning_rate, ensemble_size, max_epochs, initial_lr, momentum, cyclical_learning_rate_type, n_samples, n_logit_samples, loss_weights=None, 
                  **kwargs):
@@ -162,7 +162,7 @@ class ECGResNetSnapshotEnsemble_AuxOutSystem(pl.LightningModule):
         for model_idx in range(self.ensemble_size):
 
             # Initialize ensemble members from different epochs in the training stage of the original model
-            self.models.append(ECGResNet_AuxOut(self.hparams.in_length, self.hparams.in_channels, 
+            self.models.append(ECGResNet_AuxOut(self.hparams.in_channels, 
                                self.hparams.n_grps, self.hparams.N, self.hparams.num_classes, 
                                self.hparams.dropout, self.hparams.first_width, 
                                self.hparams.stride, self.hparams.dilation, self.hparams.n_samples, self.hparams.n_logit_samples)

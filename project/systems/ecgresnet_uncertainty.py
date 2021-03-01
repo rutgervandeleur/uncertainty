@@ -14,7 +14,7 @@ from utils.focalloss_weights import FocalLoss
 
 class ECGResNetUncertaintySystem(pl.LightningModule):
 
-    def __init__(self, in_length, in_channels, n_grps, N, 
+    def __init__(self, in_channels, n_grps, N, 
                  num_classes, dropout, first_width, stride, 
                  dilation, learning_rate, loss_weights=None, 
                  **kwargs):
@@ -22,7 +22,7 @@ class ECGResNetUncertaintySystem(pl.LightningModule):
         self.save_hyperparameters()
         self.learning_rate = learning_rate
 
-        self.model = ECGResNet(in_length, in_channels, 
+        self.model = ECGResNet(in_channels, 
                                n_grps, N, num_classes, 
                                dropout, first_width, 
                                stride, dilation)

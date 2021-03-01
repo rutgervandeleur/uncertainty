@@ -17,7 +17,7 @@ from utils.focalloss_weights import FocalLoss
 
 class ECGResNetVariationalInferenceSystem(pl.LightningModule):
 
-    def __init__(self, in_length, in_channels, n_grps, N, 
+    def __init__(self, in_channels, n_grps, N, 
                  num_classes, dropout, first_width, stride, 
                  dilation, learning_rate, n_weight_samples,
                  kl_weighting_type, kl_weighting_scheme, max_epochs,
@@ -40,7 +40,7 @@ class ECGResNetVariationalInferenceSystem(pl.LightningModule):
         self.correct_predictions = torch.empty(0).type(torch.BoolTensor)
         self.epistemic_uncertainty = torch.empty(0).type(torch.FloatTensor)
 
-        self.model = ECGResNet_VariationalInference(in_length, in_channels, 
+        self.model = ECGResNet_VariationalInference(in_channels, 
                                n_grps, N, num_classes, 
                                dropout, first_width, 
                                stride, dilation, n_weight_samples, kl_weighting_type, kl_weighting_scheme)

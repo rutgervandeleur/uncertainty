@@ -17,7 +17,7 @@ from utils.focalloss_weights import FocalLoss
 
 class ECGResNetMCDropout_AuxOutSystem(pl.LightningModule):
 
-    def __init__(self, in_length, in_channels, n_grps, N, 
+    def __init__(self, in_channels, n_grps, N, 
                  num_classes, dropout, first_width, stride, 
                  dilation, learning_rate, n_dropout_samples, n_logit_samples, sampling_dropout_rate, loss_weights=None, 
                  **kwargs):
@@ -34,7 +34,7 @@ class ECGResNetMCDropout_AuxOutSystem(pl.LightningModule):
         self.epistemic_uncertainty = torch.empty(0).type(torch.FloatTensor)
         self.total_uncertainty = torch.empty(0).type(torch.FloatTensor)
 
-        self.model = ECGResNet_MCDropout_AuxOutput(in_length, in_channels, 
+        self.model = ECGResNet_MCDropout_AuxOutput(in_channels, 
                                n_grps, N, num_classes, 
                                dropout, first_width, 
                                stride, dilation, n_dropout_samples, sampling_dropout_rate, n_logit_samples)

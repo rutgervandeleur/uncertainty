@@ -102,7 +102,7 @@ class ECGResNet(nn.Module):
     It handles the different layers and parameters of the model.
     Once initialized an ResNet object can perform forward.
     """
-    def __init__(self, in_length, in_channels, n_grps, N, num_classes, dropout, first_width, 
+    def __init__(self, in_channels, n_grps, N, num_classes, dropout, first_width, 
                  stride, dilation):
         """
         Initializes ECGResNet object. 

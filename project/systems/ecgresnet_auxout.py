@@ -17,7 +17,7 @@ from utils.focalloss_weights import FocalLoss
 
 class ECGResNetAuxOutSystem(pl.LightningModule):
 
-    def __init__(self, in_length, in_channels, n_grps, N, 
+    def __init__(self, in_channels, n_grps, N, 
                  num_classes, dropout, first_width, stride, 
                  dilation, learning_rate, n_samples, n_logit_samples, loss_weights=None, 
                  **kwargs):
