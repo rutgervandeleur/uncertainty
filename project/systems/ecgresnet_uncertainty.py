@@ -13,11 +13,29 @@ from network.ecgresnet import ECGResNet
 from utils.focalloss_weights import FocalLoss
 
 class ECGResNetUncertaintySystem(pl.LightningModule):
-
+    """
+    This class implements the ECGResNet in PyTorch Lightning.
+    """
     def __init__(self, in_channels, n_grps, N, 
                  num_classes, dropout, first_width, stride, 
                  dilation, learning_rate, loss_weights=None, 
                  **kwargs):
+        """
+        Initializes the ECGResNetUncertaintySystem
+
+        Args:
+          in_channels: number of channels of input
+          n_grps: number of ResNet groups
+          N: number of blocks per groups
+          num_classes: number of classes of the classification problem
+          dropout: probability of an argument to get zeroed in the dropout layer
+          first_width: width of the first input
+          stride: tuple with stride value per block per group
+          dilation: spacing between the kernel points of the convolutional layers
+          learning_rate: the learning rate of the model
+          loss_weights: array of weights for the loss term
+        """
+ 
         super().__init__()
         self.save_hyperparameters()
         self.learning_rate = learning_rate
@@ -34,8 +52,18 @@ class ECGResNetUncertaintySystem(pl.LightningModule):
         self.loss = FocalLoss(gamma=1, weights = weights)
 
     def forward(self, x):
-            output1, output2 = self.model(x)
-            return output1, output2
+        """
+        Performs a forward through the model.
+
+        Args:
+            x (tensor): Input data.
+
+        Returns:
+            output1: output at the auxiliary point of the ECGResNet
+            output2: output at the end of the model
+        """
+        output1, output2 = self.model(x)
+        return output1, output2
 
     def training_step(self, batch, batch_idx):
         """Performs a training step.
@@ -75,8 +103,6 @@ class ECGResNetUncertaintySystem(pl.LightningModule):
         self.log_dict(metrics)
 
     def configure_optimizers(self):
-
-        # Initialize optimizer
         optimizer = optim.Adam(self.parameters(), lr=self.learning_rate)
 
         return optimizer
@@ -89,4 +115,3 @@ class ECGResNetUncertaintySystem(pl.LightningModule):
 
     def save_results(self):
         pass
-        

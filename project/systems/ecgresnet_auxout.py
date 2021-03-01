@@ -16,15 +16,33 @@ from utils.helpers import create_results_directory
 from utils.focalloss_weights import FocalLoss
 
 class ECGResNetAuxOutSystem(pl.LightningModule):
-
+    """
+    This class implements the ECGResNet with auxiliary output in PyTorch Lightning.
+    It can estimate the aleatoric uncertainty of its predictions.
+    """
     def __init__(self, in_channels, n_grps, N, 
                  num_classes, dropout, first_width, stride, 
-                 dilation, learning_rate, n_samples, n_logit_samples, loss_weights=None, 
+                 dilation, learning_rate, n_logit_samples, loss_weights=None, 
                  **kwargs):
+        """
+        Initializes the ECGResNetAuxOutSystem
+
+        Args:
+          in_channels: number of channels of input
+          n_grps: number of ResNet groups
+          N: number of blocks per groups
+          num_classes: number of classes of the classification problem
+          dropout: probability of an argument to get zeroed in the dropout layer
+          first_width: width of the first input
+          stride: tuple with stride value per block per group
+          dilation: spacing between the kernel points of the convolutional layers
+          learning_rate: the learning rate of the model
+          n_logit_samples: number of logit samples of the auxiliary output
+          loss_weights: array of weights for the loss term
+        """
         super().__init__()
         self.save_hyperparameters()
         self.learning_rate = learning_rate
-        self.n_samples = n_samples
         self.n_logit_samples = n_logit_samples
 
         self.IDs = torch.empty(0).type(torch.LongTensor)
@@ -45,6 +63,17 @@ class ECGResNetAuxOutSystem(pl.LightningModule):
         self.loss = FocalLoss(gamma=1, weights = weights)
 
     def forward(self, x):
+        """
+        Performs a forward through the model.
+
+        Args:
+            x (tensor): Input data.
+
+        Returns:
+            output1: output at the auxiliary point of the ECGResNet
+            output2_mean: output at the end of the model
+            output2_log_var: the predicted log variance of the model
+        """
         output1, output2_mean, output2_log_var = self.model(x)
         return output1, output2_mean, output2_log_var
 
@@ -64,11 +93,8 @@ class ECGResNetAuxOutSystem(pl.LightningModule):
         output1, output2_mean, output2_log_var = self(data)
 
         # Sample from logits, returning a vector x_i
-        x_i = self.model.sample_logits(self.n_samples, output2_mean, output2_log_var, average=True)
+        x_i = self.model.sample_logits(self.n_logit_samples, output2_mean, output2_log_var, average=True)
             
-        # Apply softmax to obtain probability vector p_i
-        # p_i = F.softmax(x_i, dim=1)
-
         train_loss1 = self.loss(output1, target)
         train_loss2 = self.loss(x_i, target)
         total_train_loss = (0.3 * train_loss1) + train_loss2
@@ -84,7 +110,7 @@ class ECGResNetAuxOutSystem(pl.LightningModule):
         _, output2_mean, output2_log_var = self(data)
             
         # Sample from logits, returning a  vector x_i
-        x_i = self.model.sample_logits(self.n_samples, output2_mean, output2_log_var, average=True)
+        x_i = self.model.sample_logits(self.n_logit_samples, output2_mean, output2_log_var, average=True)
         
         # Apply softmax to obtain probability vector p_i
         p_i = F.softmax(x_i, dim=1)
@@ -92,7 +118,7 @@ class ECGResNetAuxOutSystem(pl.LightningModule):
         val_loss = self.loss(x_i, target)
         acc = FM.accuracy(p_i, target)
 
-        # loss is tensor. The Checkpoint Callback is monitoring 'checkpoint_on'
+        # Log results
         metrics = {'val_loss': val_loss.item(), 'val_acc': acc.item()}
         self.log('val_acc', acc.item())
         self.log('val_loss', val_loss.item())
@@ -105,7 +131,7 @@ class ECGResNetAuxOutSystem(pl.LightningModule):
         _, output2_mean, output2_log_var = self(data)
             
         # Sample from logits, returning a  vector x_i
-        x_i = self.model.sample_logits(self.n_samples, output2_mean, output2_log_var, average=True)
+        x_i = self.model.sample_logits(self.n_logit_samples, output2_mean, output2_log_var, average=True)
         
         # Apply softmax to obtain probability vector p_i
         p_i = F.softmax(x_i, dim=1)
@@ -134,8 +160,10 @@ class ECGResNetAuxOutSystem(pl.LightningModule):
 
         return {'test_loss': test_loss.item(), 'test_acc': acc.item()}
 
-    # Initialize optimizer
     def configure_optimizers(self):
+        """
+        Initialize optimizer
+        """
         optimizer = optim.Adam(self.parameters(), lr=self.learning_rate)
 
         return optimizer
@@ -143,13 +171,15 @@ class ECGResNetAuxOutSystem(pl.LightningModule):
     def add_model_specific_args(parent_parser):
         parser = ArgumentParser(parents=[parent_parser], add_help=False)
         parser.add_argument('--model_name', type=str, default='none_auxout')
-        parser.add_argument('--n_samples', type=int, default=100)
         parser.add_argument('--n_logit_samples', type=int, default=100)
         parser.add_argument('--ensembling_method', type=bool, default=False)
         return parser
 
-    # Combine results into single dataframe and save to disk
     def save_results(self):
+        """
+        Combine results into single dataframe and save to disk as .csv file
+        """
+
         results = pd.concat([
             pd.DataFrame(self.IDs.numpy(), columns= ['ID']),  
             pd.DataFrame(self.predicted_labels.numpy(), columns= ['predicted_label']),

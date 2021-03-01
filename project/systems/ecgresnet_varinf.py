@@ -16,13 +16,38 @@ from utils.helpers import create_results_directory
 from utils.focalloss_weights import FocalLoss
 
 class ECGResNetVariationalInferenceSystem(pl.LightningModule):
-
+    """
+    This class implements the ECGResNet with Bayesian layers in PyTorch Lightning.
+    It can estimate the epistemic uncertainty of its predictions.
+    """
     def __init__(self, in_channels, n_grps, N, 
                  num_classes, dropout, first_width, stride, 
                  dilation, learning_rate, n_weight_samples,
                  kl_weighting_type, kl_weighting_scheme, max_epochs,
                  train_dataset_size, val_dataset_size, batch_size,
                  loss_weights=None, **kwargs):
+        """
+        Initializes the ECGResNetVariationalInferenceSystem
+
+        Args:
+          in_channels: number of channels of input
+          n_grps: number of ResNet groups
+          N: number of blocks per groups
+          num_classes: number of classes of the classification problem
+          dropout: probability of an argument to get zeroed in the dropout layer
+          first_width: width of the first input
+          stride: tuple with stride value per block per group
+          dilation: spacing between the kernel points of the convolutional layers
+          learning_rate: the learning rate of the model
+          n_weight_samples: number of Monte Carlo samples of the weights
+          kl_weighting_type: which type of weighting to apply to the Kullback-Leibler term
+          kl_weighting_scheme: which scheme of weighting to apply to the Kullback-Leibler term
+          max_epochs: total number of epochs
+          train_dataset_size: number of samples in the train dataset
+          val_dataset_size: number of samples in the validation dataset
+          batch_size: number of samples in a mini-batch
+          loss_weights: array of weights for the loss term
+        """
         super().__init__()
         self.save_hyperparameters()
         self.learning_rate = learning_rate
@@ -53,6 +78,16 @@ class ECGResNetVariationalInferenceSystem(pl.LightningModule):
         self.loss = FocalLoss(gamma=1, weights = weights)
 
     def forward(self, x):
+        """
+        Performs a forward through the model.
+
+        Args:
+            x (tensor): Input data.
+
+        Returns:
+            output1: output at the auxiliary point of the ECGResNet
+            output2: output at the end of the model
+        """
         output1, output2 = self.model(x)
         return output1, output2
 
@@ -155,7 +190,6 @@ class ECGResNetVariationalInferenceSystem(pl.LightningModule):
 
         return {'test_loss': test_loss.item(), 'test_acc': acc.item(), 'test_loss': test_loss.item()}
 
-    # Initialize optimizer
     def configure_optimizers(self):
         optimizer = optim.Adam(self.parameters(), lr=self.learning_rate)
 
@@ -172,6 +206,9 @@ class ECGResNetVariationalInferenceSystem(pl.LightningModule):
 
     # Combine results into single dataframe and save to disk
     def save_results(self):
+        """
+        Combine results into single dataframe and save to disk as .csv file
+        """
         results = pd.concat([
             pd.DataFrame(self.IDs.numpy(), columns= ['ID']),  
             pd.DataFrame(self.predicted_labels.numpy(), columns= ['predicted_label']),

@@ -17,11 +17,33 @@ from utils.helpers import create_results_directory
 from utils.focalloss_weights import FocalLoss
 
 class ECGResNetEnsembleSystem(pl.LightningModule):
+    """
+    This class implements an ensemble of ECGResNets in PyTorch Lightning.
+    It can estimate the epistemic uncertainty of its predictions.
+    """
 
     def __init__(self, in_channels, n_grps, N, 
                  num_classes, dropout, first_width, stride, 
                  dilation, learning_rate, ensemble_size, loss_weights=None, 
                  **kwargs):
+        """
+        Initializes the ECGResNetEnsembleSystem
+
+        Args:
+          in_channels: number of channels of input
+          n_grps: number of ResNet groups
+          N: number of blocks per groups
+          num_classes: number of classes of the classification problem
+          dropout: probability of an argument to get zeroed in the dropout layer
+          first_width: width of the first input
+          stride: tuple with stride value per block per group
+          dilation: spacing between the kernel points of the convolutional layers
+          learning_rate: the learning rate of the model
+          ensemble_size: the number of models that make up the ensemble
+          loss_weights: array of weights for the loss term
+        """
+
+
         super().__init__()
         self.save_hyperparameters()
         self.learning_rate = learning_rate
@@ -35,6 +57,8 @@ class ECGResNetEnsembleSystem(pl.LightningModule):
 
         self.models = []
         self.optimizers = []
+
+        # Initialize mutliple ensemble members
         for i in range(self.ensemble_size):
             self.models.append(ECGResNet(in_channels, 
                                n_grps, N, num_classes, 
@@ -154,8 +178,10 @@ class ECGResNetEnsembleSystem(pl.LightningModule):
 
         return {'test_loss': test_loss.item(), 'test_acc': acc.item(), 'test_loss': test_loss.item()}
 
-    # Initialize an optimizer for each model in the ensemble
     def configure_optimizers(self):
+        """
+        Initialize an optimizer for each model in the ensemble
+        """
         for i in range(self.ensemble_size):
             self.optimizers.append(optim.Adam(self.models[i].parameters(), lr=self.learning_rate))
         
@@ -168,8 +194,10 @@ class ECGResNetEnsembleSystem(pl.LightningModule):
         parser.add_argument('--ensembling_method', type=bool, default=True)
         return parser
 
-    # Combine results into single dataframe and save to disk
     def save_results(self):
+        """
+        Combine results into single dataframe and save to disk as .csv file
+        """
         results = pd.concat([
             pd.DataFrame(self.IDs.numpy(), columns= ['ID']),  
             pd.DataFrame(self.predicted_labels.numpy(), columns= ['predicted_label']),

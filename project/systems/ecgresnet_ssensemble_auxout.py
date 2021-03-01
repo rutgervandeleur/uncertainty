@@ -17,11 +17,34 @@ from utils.helpers import create_results_directory, create_weights_directory
 from utils.focalloss_weights import FocalLoss
 
 class ECGResNetSnapshotEnsemble_AuxOutSystem(pl.LightningModule):
-
+    """
+    This class implements an snapshot ensemble of ECGResNets with auxiliary output in PyTorch Lightning.
+    It can estimate the epistemic and aleatoric uncertainty of its predictions.
+    """
     def __init__(self, in_channels, n_grps, N, 
                  num_classes, dropout, first_width, stride, 
-                 dilation, learning_rate, ensemble_size, max_epochs, initial_lr, momentum, cyclical_learning_rate_type, n_samples, n_logit_samples, loss_weights=None, 
+                 dilation, learning_rate, ensemble_size, max_epochs, initial_lr, cyclical_learning_rate_type, n_logit_samples, loss_weights=None, 
                  **kwargs):
+        """
+        Initializes the ECGResNetSnapshotEnsemble_AuxOutSystem
+
+        Args:
+          in_channels: number of channels of input
+          n_grps: number of ResNet groups
+          N: number of blocks per groups
+          num_classes: number of classes of the classification problem
+          dropout: probability of an argument to get zeroed in the dropout layer
+          first_width: width of the first input
+          stride: tuple with stride value per block per group
+          dilation: spacing between the kernel points of the convolutional layers
+          learning_rate: the learning rate of the model
+          ensemble_size: the number of models that make up the ensemble
+          max_epochs: total number of epochs to train for
+          initial_lr: the initial learning rate at the start of a learning cycle
+          cyclical_learning_rate_type: the type of learning rate cycling to apply
+          n_logit_samples: number of logit samples of the auxiliary output
+          loss_weights: array of weights for the loss term
+        """
         super().__init__()
         self.save_hyperparameters()
         self.learning_rate = learning_rate
@@ -29,9 +52,7 @@ class ECGResNetSnapshotEnsemble_AuxOutSystem(pl.LightningModule):
         self.ensemble_size = ensemble_size
         self.max_epochs = max_epochs
         self.initial_lr = initial_lr
-        self.momentum = momentum
         self.cyclical_learning_rate_type = cyclical_learning_rate_type
-        self.n_samples = n_samples
         self.n_logit_samples = n_logit_samples
 
         self.IDs = torch.empty(0).type(torch.LongTensor)
@@ -74,7 +95,9 @@ class ECGResNetSnapshotEnsemble_AuxOutSystem(pl.LightningModule):
         return output1, output2_mean, output2_log_var
 
     def on_train_epoch_start(self):
-        # Set the cyclical learning rate for the current epoch
+        """
+        Set the cyclical learning rate for the current epoch
+        """
         learning_rate = self.get_learning_rate(self.current_epoch, self.ensemble_size, self.max_epochs, self.initial_lr, self.cyclical_learning_rate_type)
         self.set_learning_rate(self.optimizers[0], learning_rate)
         self.log('Learning rate', learning_rate)
@@ -97,7 +120,7 @@ class ECGResNetSnapshotEnsemble_AuxOutSystem(pl.LightningModule):
         output1, output2_mean, output2_log_var = self(data, model_idx)
 
         # Sample from logits, returning a vector x_i
-        x_i = self.models[model_idx].sample_logits(self.n_samples, output2_mean, output2_log_var, average=True)
+        x_i = self.models[model_idx].sample_logits(self.n_logit_samples, output2_mean, output2_log_var, average=True)
 
         train_loss1 = self.loss(output1, target)
         train_loss2 = self.loss(x_i, target)
@@ -114,7 +137,9 @@ class ECGResNetSnapshotEnsemble_AuxOutSystem(pl.LightningModule):
 
 
     def on_train_epoch_end(self, outputs):
-        # Save the model after each learning-rate cycle
+        """
+        Save the model after each learning-rate cycle
+        """
         if self.cyclical_learning_rate_type == 'cosine-annealing':
             epochs_per_cycle = self.max_epochs/self.ensemble_size
 
@@ -139,7 +164,7 @@ class ECGResNetSnapshotEnsemble_AuxOutSystem(pl.LightningModule):
         _, output2_mean, output2_log_var = self(data, model_idx)
 
         # Sample from logits, returning vector x_i
-        x_i = self.models[model_idx].sample_logits(self.n_samples, output2_mean, output2_log_var, average=True)
+        x_i = self.models[model_idx].sample_logits(self.n_logit_samples, output2_mean, output2_log_var, average=True)
 
         # Apply softmax to obtain probability vector p_i
         p_i = F.softmax(x_i, dim=1)
@@ -154,6 +179,9 @@ class ECGResNetSnapshotEnsemble_AuxOutSystem(pl.LightningModule):
         return metrics
 
     def on_test_epoch_start(self):
+        """
+        Initialize ensemble members from saved checkpoints
+        """
         print('\nInitializing ensemble members from checkpoints')
 
         # Remove first model from self.models
@@ -165,7 +193,7 @@ class ECGResNetSnapshotEnsemble_AuxOutSystem(pl.LightningModule):
             self.models.append(ECGResNet_AuxOut(self.hparams.in_channels, 
                                self.hparams.n_grps, self.hparams.N, self.hparams.num_classes, 
                                self.hparams.dropout, self.hparams.first_width, 
-                               self.hparams.stride, self.hparams.dilation, self.hparams.n_samples, self.hparams.n_logit_samples)
+                               self.hparams.stride, self.hparams.dilation, self.hparams.n_logit_samples)
                               )
 
 
@@ -177,7 +205,6 @@ class ECGResNetSnapshotEnsemble_AuxOutSystem(pl.LightningModule):
             print('Model {}/{} initialized\n'.format(model_idx+1, self.ensemble_size))
 
     def test_step(self, batch, batch_idx, save_to_csv=False):
-
         prediction_individual = torch.empty(batch['label'].shape[0], self.ensemble_size, self.num_classes)
         aleatoric_var = torch.empty(batch['label'].shape[0], self.ensemble_size, self.num_classes)
         data, target = batch['waveform'], batch['label']
@@ -189,7 +216,7 @@ class ECGResNetSnapshotEnsemble_AuxOutSystem(pl.LightningModule):
             _, output2_mean, output2_log_var = self(data, model_idx)
 
             # Sample from logits, returning a  vector x_i
-            x_i = self.models[model_idx].sample_logits(self.n_samples, output2_mean, output2_log_var, average=True)
+            x_i = self.models[model_idx].sample_logits(self.n_logit_samples, output2_mean, output2_log_var, average=True)
 
             prediction_individual[:, model_idx] = x_i.data
 
@@ -235,13 +262,30 @@ class ECGResNetSnapshotEnsemble_AuxOutSystem(pl.LightningModule):
 
     # Initialize an optimizer for each model in the ensemble
     def configure_optimizers(self):
+        """
+        Initialize the optimizer, during training only a single model is used
+        """
         model_idx = 0
         self.optimizers.append(optim.SGD(self.models[model_idx].parameters(), lr=self.initial_lr))
         
         return self.optimizers
 
     def get_learning_rate(self, epoch_idx, n_models, total_epochs, initial_lr, cyclical_learning_rate_type):
+        """
+        Returns the learning rate for the current epoch.
+
+        Args:
+            epoch_idx: index of the current epoch
+            n_models: total number of ensemble members
+            total_epochs: total number of epochs to train for
+            initial_lr: the initial learning rate at the start of a learning cycle
+            cyclical_learning_rate_type: the type of learning rate cycling to apply
+        """
         if cyclical_learning_rate_type == 'cosine-annealing':
+            """
+            Apply a cosine-annealing cyclical learning rate as proposed by
+            Loshchilov et al. in: "SGDR: Stochastic Gradient Descent with Warm Restarts"
+            """
             epochs_per_cycle = total_epochs/n_models 
             learning_rate = initial_lr * (np.cos(np.pi * (epoch_idx % epochs_per_cycle) / epochs_per_cycle) + 1) / 2
             return learning_rate
@@ -249,6 +293,13 @@ class ECGResNetSnapshotEnsemble_AuxOutSystem(pl.LightningModule):
             return learning_rate
     
     def set_learning_rate(self, optimizer, learning_rate):
+        """
+        Sets the learning rate for an optimizer
+
+        Args:
+            optimizer: optimizer to apply learning rate to
+            learning_rate: learning rate to set
+        """
         for param_group in optimizer.param_groups:
             param_group['lr'] = learning_rate
 
@@ -258,14 +309,15 @@ class ECGResNetSnapshotEnsemble_AuxOutSystem(pl.LightningModule):
         parser.add_argument('--ensemble_size', type=int, default=2)
         parser.add_argument('--ensembling_method', type=bool, default=True)
         parser.add_argument('--initial_lr', type=float, default=0.1)
-        parser.add_argument('--momentum', type=float, default=0.0)
         parser.add_argument('--cyclical_learning_rate_type', type=str, default='cosine-annealing', choices=['cosine-annealing', 'none'])
-        parser.add_argument('--n_samples', type=int, default=100)
         parser.add_argument('--n_logit_samples', type=int, default=100)
         return parser
 
     # Combine results into single dataframe and save to disk
     def save_results(self):
+        """
+        Combine results into single dataframe and save to disk as .csv file
+        """
         results = pd.concat([
             pd.DataFrame(self.IDs.numpy(), columns= ['ID']),  
             pd.DataFrame(self.predicted_labels.numpy(), columns= ['predicted_label']),

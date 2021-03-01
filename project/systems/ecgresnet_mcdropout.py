@@ -16,11 +16,33 @@ from utils.helpers import create_results_directory
 from utils.focalloss_weights import FocalLoss
 
 class ECGResNetMCDropoutSystem(pl.LightningModule):
+    """
+    This class implements the ECGResNet with Monte Carlo dropout PyTorch Lightning.
+    It can estimate the epistemic uncertainty of its predictions.
+    """
 
     def __init__(self, in_channels, n_grps, N, 
                  num_classes, dropout, first_width, stride, 
                  dilation, learning_rate, n_dropout_samples, sampling_dropout_rate, loss_weights=None, 
                  **kwargs):
+        """
+        Initializes the ECGResNetMCDropoutSystem
+
+        Args:
+          in_channels: number of channels of input
+          n_grps: number of ResNet groups
+          N: number of blocks per groups
+          num_classes: number of classes of the classification problem
+          dropout: probability of an argument to get zeroed in the dropout layer
+          first_width: width of the first input
+          stride: tuple with stride value per block per group
+          dilation: spacing between the kernel points of the convolutional layers
+          learning_rate: the learning rate of the model
+          n_dropout_samples: number of Monte Carlo dropout samples to take
+          sampling_dropout_rate: the ratio of dropped-out neurons during Monte Carlo sampling
+          loss_weights: array of weights for the loss term
+        """
+
         super().__init__()
         self.save_hyperparameters()
         self.learning_rate = learning_rate
@@ -43,6 +65,16 @@ class ECGResNetMCDropoutSystem(pl.LightningModule):
         self.loss = FocalLoss(gamma=1, weights = weights)
 
     def forward(self, x):
+        """
+        Performs a forward through the model.
+
+        Args:
+            x (tensor): Input data.
+
+        Returns:
+            output1: output at the auxiliary point of the ECGResNet
+            output2: output at the end of the model
+        """
         output1, output2 = self.model(x)
         return output1, output2
 
@@ -108,7 +140,6 @@ class ECGResNetMCDropoutSystem(pl.LightningModule):
 
         return {'test_loss': test_loss.item(), 'test_acc': acc.item(), 'test_loss': test_loss.item()}
 
-    # Initialize optimizer
     def configure_optimizers(self):
         optimizer = optim.Adam(self.parameters(), lr=self.learning_rate)
 
@@ -124,6 +155,9 @@ class ECGResNetMCDropoutSystem(pl.LightningModule):
 
     # Combine results into single dataframe and save to disk
     def save_results(self):
+        """
+        Combine results into single dataframe and save to disk as .csv file
+        """
         results = pd.concat([
             pd.DataFrame(self.IDs.numpy(), columns= ['ID']),  
             pd.DataFrame(self.predicted_labels.numpy(), columns= ['predicted_label']),

@@ -18,17 +18,38 @@ from utils.helpers import create_results_directory
 from utils.focalloss_weights import FocalLoss
 
 class ECGResNetEnsemble_AuxOutSystem(pl.LightningModule):
+    """
+    This class implements the ECGResNet with ensemble and auxiliary output in PyTorch Lightning.
+    It can estimate the epistemic and aleatoric uncertainty of its predictions.
+    """
 
     def __init__(self, in_channels, n_grps, N, 
                  num_classes, dropout, first_width, stride, 
-                 dilation, learning_rate, ensemble_size, n_samples, n_logit_samples, loss_weights=None, 
+                 dilation, learning_rate, ensemble_size, n_logit_samples, loss_weights=None, 
                  **kwargs):
+        """
+        Initializes the ECGResNetEnsemble_AuxOutSystem
+
+        Args:
+          in_channels: number of channels of input
+          n_grps: number of ResNet groups
+          N: number of blocks per groups
+          num_classes: number of classes of the classification problem
+          dropout: probability of an argument to get zeroed in the dropout layer
+          first_width: width of the first input
+          stride: tuple with stride value per block per group
+          dilation: spacing between the kernel points of the convolutional layers
+          learning_rate: the learning rate of the model
+          ensemble_size: the number of models that make up the ensemble
+          n_logit_samples: number of logit samples of the auxiliary output
+          loss_weights: array of weights for the loss term
+        """
+
         super().__init__()
         self.save_hyperparameters()
         self.learning_rate = learning_rate
         self.num_classes = num_classes
         self.ensemble_size = ensemble_size
-        self.n_samples = n_samples
         self.n_logit_samples = n_logit_samples
 
         self.IDs = torch.empty(0).type(torch.LongTensor)
@@ -89,7 +110,7 @@ class ECGResNetEnsemble_AuxOutSystem(pl.LightningModule):
             output1, output2_mean, output2_log_var = self(data, model_idx)
 
             # Sample from logits, returning a vector x_i
-            x_i = self.models[model_idx].sample_logits(self.n_samples, output2_mean, output2_log_var, average=True)
+            x_i = self.models[model_idx].sample_logits(self.n_logit_samples, output2_mean, output2_log_var, average=True)
 
             train_loss1 = self.loss(output1, target)
             train_loss2 = self.loss(x_i, target)
@@ -119,7 +140,7 @@ class ECGResNetEnsemble_AuxOutSystem(pl.LightningModule):
             _, output2_mean, output2_log_var = self(data, model_idx)
 
             # Sample from logits, returning avector x_i
-            x_i = self.models[model_idx].sample_logits(self.n_samples, output2_mean, output2_log_var, average=True)
+            x_i = self.models[model_idx].sample_logits(self.n_logit_samples, output2_mean, output2_log_var, average=True)
 
             prediction_individual[:, model_idx] = x_i
             
@@ -148,7 +169,7 @@ class ECGResNetEnsemble_AuxOutSystem(pl.LightningModule):
             _, output2_mean, output2_log_var = self(data, model_idx)
 
             # Sample from logits, returning a  vector x_i
-            x_i = self.models[model_idx].sample_logits(self.n_samples, output2_mean, output2_log_var, average=True)
+            x_i = self.models[model_idx].sample_logits(self.n_logit_samples, output2_mean, output2_log_var, average=True)
 
             prediction_individual[:, model_idx] = x_i.data
 
@@ -192,8 +213,10 @@ class ECGResNetEnsemble_AuxOutSystem(pl.LightningModule):
 
         return {'test_loss': test_loss.item(), 'test_acc': acc.item(), 'test_loss': test_loss.item()}
 
-    # Initialize an optimizer for each model in the ensemble
     def configure_optimizers(self):
+        """
+        Initialize an optimizer for each model in the ensemble
+        """
         for i in range(self.ensemble_size):
             self.optimizers.append(optim.Adam(self.models[i].parameters(), lr=self.learning_rate))
         
@@ -204,12 +227,13 @@ class ECGResNetEnsemble_AuxOutSystem(pl.LightningModule):
         parser.add_argument('--model_name', type=str, default='ensemble_none')
         parser.add_argument('--ensemble_size', type=int, default=5)
         parser.add_argument('--ensembling_method', type=bool, default=True)
-        parser.add_argument('--n_samples', type=int, default=100)
         parser.add_argument('--n_logit_samples', type=int, default=100)
         return parser
 
-    # Combine results into single dataframe and save to disk
     def save_results(self):
+        """
+        Combine results into single dataframe and save to disk as .csv file
+        """
         results = pd.concat([
             pd.DataFrame(self.IDs.numpy(), columns= ['ID']),  
             pd.DataFrame(self.predicted_labels.numpy(), columns= ['predicted_label']),

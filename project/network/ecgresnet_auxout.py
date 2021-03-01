@@ -114,7 +114,7 @@ class ECGResNet_AuxOut(nn.Module):
         the network to predict the log variance instead of the normal variance."
 
         Args:
-            T: number of logits samples
+            T: number of logit samples
             log_var: the log variance as predicted by the auxiliary output
             average: whether to average the result
         """

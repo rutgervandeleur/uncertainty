@@ -16,11 +16,31 @@ from utils.helpers import create_results_directory
 from utils.focalloss_weights import FocalLoss
 
 class ECGResNetMCDropout_AuxOutSystem(pl.LightningModule):
+    """
+    This class implements the ECGResNet with Monte Carlo dropout and Auxiliary output in PyTorch Lightning.
+    It can estimate the epistemic and aleatoric uncertainty of its predictions.
+    """
 
     def __init__(self, in_channels, n_grps, N, 
                  num_classes, dropout, first_width, stride, 
-                 dilation, learning_rate, n_dropout_samples, n_logit_samples, sampling_dropout_rate, loss_weights=None, 
+                 dilation, learning_rate, n_dropout_samples, sampling_dropout_rate, n_logit_samples, loss_weights=None, 
                  **kwargs):
+        """
+        Args:
+          in_channels: number of channels of input
+          n_grps: number of ResNet groups
+          N: number of blocks per groups
+          num_classes: number of classes of the classification problem
+          dropout: probability of an argument to get zeroed in the dropout layer
+          first_width: width of the first input
+          stride: tuple with stride value per block per group
+          dilation: spacing between the kernel points of the convolutional layers
+          learning_rate: the learning rate of the model
+          n_dropout_samples: number of Monte Carlo dropout samples to take
+          sampling_dropout_rate: the ratio of dropped-out neurons during Monte Carlo sampling
+          n_logit_samples: number of logit samples of the auxiliary output
+          loss_weights: array of weights for the loss term
+        """
         super().__init__()
         self.save_hyperparameters()
         self.learning_rate = learning_rate
@@ -48,6 +68,17 @@ class ECGResNetMCDropout_AuxOutSystem(pl.LightningModule):
         self.loss = FocalLoss(gamma=1, weights = weights)
 
     def forward(self, x):
+        """
+        Performs a forward through the model.
+
+        Args:
+            x (tensor): Input data.
+
+        Returns:
+            output1: output at the auxiliary point of the ECGResNet
+            output2_mean: output at the end of the model
+            output2_log_var: the predicted log variance of the model
+        """
         output1, output2_mean, output2_log_var = self.model(x)
         return output1, output2_mean, output2_log_var
 
@@ -69,9 +100,6 @@ class ECGResNetMCDropout_AuxOutSystem(pl.LightningModule):
         # Sample from logits, returning a vector x_i
         x_i = self.model.sample_logits(self.n_logit_samples, output2_mean, output2_log_var, average=True)
             
-        # Apply softmax to obtain probability vector p_i
-        # p_i = F.softmax(x_i, dim=1)
-
         train_loss1 = self.loss(output1, target)
         train_loss2 = self.loss(x_i, target)
         total_train_loss = (0.3 * train_loss1) + train_loss2
@@ -95,14 +123,16 @@ class ECGResNetMCDropout_AuxOutSystem(pl.LightningModule):
         val_loss = self.loss(x_i, target)
         acc = FM.accuracy(p_i, target)
 
-        # loss is tensor. The Checkpoint Callback is monitoring 'checkpoint_on'
+        # Log metrics
         metrics = {'val_loss': val_loss.item(), 'val_acc': acc.item()}
         self.log('val_acc', acc.item())
         self.log('val_loss', val_loss.item())
         return metrics
 
     def on_test_epoch_start(self):
-        # Enable dropout at test time.
+        """
+        Enable dropout at test time.
+        """
         self.model.enable_dropout()
 
     def test_step(self, batch, batch_idx, save_to_csv=False):
@@ -142,7 +172,6 @@ class ECGResNetMCDropout_AuxOutSystem(pl.LightningModule):
 
         return {'test_loss': test_loss.item(), 'test_acc': acc.item()}
 
-    # Initialize optimizer
     def configure_optimizers(self):
         optimizer = optim.Adam(self.parameters(), lr=self.learning_rate)
 
@@ -159,6 +188,9 @@ class ECGResNetMCDropout_AuxOutSystem(pl.LightningModule):
 
     # Combine results into single dataframe and save to disk
     def save_results(self):
+        """
+        Combine results into single dataframe and save to disk as .csv file
+        """
         results = pd.concat([
             pd.DataFrame(self.IDs.numpy(), columns= ['ID']),  
             pd.DataFrame(self.predicted_labels.numpy(), columns= ['predicted_label']),
