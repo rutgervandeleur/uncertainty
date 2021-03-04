@@ -91,79 +91,6 @@ class ECGDataset(Dataset):
 
         return sample
 
-# class ToTensor(object):
-#     """
-#     Convert ndarrays in sample to Tensors.
-#     """
-
-#     def __call__(self, sample):
-#         # waveform = sample['waveform'][0:8,]
-#         waveform = sample['waveform']
-#         sample['waveform'] = torch.from_numpy(waveform).type(torch.FloatTensor)
-#         sample['age'] = torch.from_numpy(np.array(sample['age'])).type(torch.FloatTensor)
-#         sample['gender'] = torch.from_numpy(np.array(sample['gender'])).type(torch.FloatTensor)
-#         return sample
-    
-# class ApplyGain(object):
-#     """
-#     Normalize ECG signal by multiplying by specified gain and converting to millivolts
-#     """
-#     def __init__(self, umc = True):
-#         self.umc = umc
-        
-#     def __call__(self, sample, umc = True):
-#         if self.umc:
-#             waveform = sample['waveform'] * 0.001 * 4.88
-#         else:
-#             waveform = sample['waveform'] * 0.001
-#         sample['waveform'] = waveform
-        
-#         return sample
-    
-# class SelectMiddleN(object):
-#     """
-#     Select middle n timepoints of ECG signal
-#     """
-#     def __init__(self, n):
-#         self.n = n
-        
-#     def __call__(self, sample):
-#         waveform = sample['waveform']
-#         start = (waveform.shape[1] - self.n) // 2
-#         stop = start + self.n
-#         sample['waveform'] = waveform[:,start:stop]
-        
-#         return sample
-    
-# class SwitchLeads(object):
-#     """
-#     Switch leads between specified indices.
-#     Leads are in following order: [I, II, V1, V2, V3, V4, V5, V6]
-#     """
-    
-#     def __init__(self, lead_idx=[0, 1]):
-#         self.lead_idx = lead_idx
-    
-#     def __call__(self, sample):
-#         # Extract leads at indices
-#         lead_0 = torch.clone(sample['waveform'][self.lead_idx[0]]) # Needs to be cloned, otherwise lead_0 will be overwritten by first switch step
-        
-#         # Switch leads
-#         sample['waveform'][self.lead_idx[0]] = sample['waveform'][self.lead_idx[1]]
-#         sample['waveform'][self.lead_idx[1]] = lead_0
-
-#         return sample
-
-# def collate_fn_skip_None(batch):
-#     batch = list(filter(lambda x: x is not None, batch))
-#     return torch.utils.data.dataloader.default_collate(batch)
-
-# def assert_shape_match(data, shape):
-#     if data.shape == shape:
-#         return True
-#     else:
-#         return False
-
 class CPSC2018Dataset(Dataset):
     '''China Physiological Signal Challenge 2018 dataset'''
     def __init__(self, path_labels_csv, waveform_dir, OOD_classname,
@@ -191,7 +118,7 @@ class CPSC2018Dataset(Dataset):
     def __len__(self):
         return len(self.path_labels)
 
-    #Due to differences in sample lengths, now just extract first 5000 samples
+    # Due to differences in sample lengths, now just extract first 5000 samples
     def __getitem__(self, idx):
         item = scipy.io.loadmat(self.generate_path(idx))
         waveform = self.convert_from_12_to_8_lead(item['ECG']['data'][0][0])
@@ -230,15 +157,12 @@ class CPSC2018Dataset(Dataset):
             fig, axs = plt.subplots(len(lead_idx), 1)
             for i, lead_ix in enumerate(lead_idx):
                 axs[i].plot(sample['waveform'][lead_ix-1][interval[0]:interval[1]])
-                # plt.xlabel('Samples @ {} hz'.format(sample['header']['sample_Fs']))
                 axs[i].set_ylabel('Lead {}'.format(lead_ix))
         else:
             fig, axs = plt.subplots(sample['waveform'].shape[0], 1)
             for i, ax in enumerate(axs):
                 ax.plot(sample['waveform'][i][interval[0]:interval[1]])
-                # plt.xlabel('Samples @ {} hz'.format(sample['header']['sample_Fs']))
                 ax.set_ylabel('Lead {}'.format(i + 1))
-        # fig.suptitle('ECG: {}, Label: {}'.format(sample['header']['ptID'], sample['header']['label']),fontsize=12)
         plt.show()
 
     # Find unique number of classes  
@@ -246,7 +170,3 @@ class CPSC2018Dataset(Dataset):
         classes = self.path_labels['First_label'].unique()
 
         return sorted(classes) 
-        
-        # return sorted(classes)
-
-

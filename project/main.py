@@ -72,7 +72,6 @@ def main(args, ECGResNet_params, model_class):
     val_loader = DataLoader(validationset, batch_size=ECGResNet_params['batch_size'], num_workers=8)
     test_loader = DataLoader(testset, batch_size=ECGResNet_params['batch_size'], num_workers=8)
 
-
     # Initialize model
     model = model_class(**merged_dict)
     print('Initialized {}'.format(model.__class__.__name__))
@@ -81,8 +80,7 @@ def main(args, ECGResNet_params, model_class):
     tb_logger = pl_loggers.TensorBoardLogger('lightning_logs/')
 
     # Initialize trainer
-    k = 1
-    trainer = Trainer.from_argparse_args(args, max_epochs=ECGResNet_params['max_epochs'], logger=tb_logger, log_every_n_steps=k)
+    trainer = Trainer.from_argparse_args(args, max_epochs=ECGResNet_params['max_epochs'], logger=tb_logger)
 
     # Train model
     trainer.fit(model, train_loader, val_loader)
