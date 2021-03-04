@@ -21,13 +21,32 @@ git clone https://github.com/rutgervandeleur/uncertainty
 cd uncertainty
 pip install -e .   
 pip install -r requirements.txt
- ```   
- Next, navigate to any file and run it.   
- ```bash
-# module folder
+ ```
+Next, make sure the [CPSC2018 dataset](http://2018.icbeb.org/Challenge.html) is downloaded and the correct path is set in the CPSC2018 config file
+```bash
+# edit config file
+vim project/configs/CPSC2018.json
+```
+Alternatively, you can use a dataset of your choice by extending the ```torch.utils.data.Dataset``` class in the ```project/utils/dataloader.py``` file.
+
+Now you can train a model with uncertainty estimation by passing the desired methods to the program. The following methods are available:
+##### Epistemic uncertainty estimation methods:
+- Monte Carlo Dropout [**mcdropout**]
+- Ensemble [**ensemble**]
+- Snapshot Ensemble [**ssensemble**]
+- Variational Inference [**varinf**]
+- None [**none**]
+
+##### Aleatoric uncertainty estimation methods:
+- Auxiliary Output [**auxout**]
+- Bayesian Decomposition [**bayesdecomp**] (Requires the Variational Inference epistemic method)
+- None [**none**]
+
+```bash
+# go to project folder
 cd project
 
-# run module (example: Variational inference with bayesian decomposition)   
+# train model (example: Variational Inference with Bayesian Decomposition)   
 python main.py --epistemic_method varinf --aleatoric_method bayesdecomp
 ```
 
