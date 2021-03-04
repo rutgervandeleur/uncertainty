@@ -27,9 +27,19 @@ Next, make sure the [CPSC2018 dataset](http://2018.icbeb.org/Challenge.html) is 
 # edit config file
 vim project/configs/CPSC2018.json
 ```
-Alternatively, you can use a dataset of your choice by extending the ```torch.utils.data.Dataset``` class in the ```project/utils/dataloader.py``` file.
+*Alternatively, you can use a dataset of your choice by extending the ```torch.utils.data.Dataset``` class in the [project/utils/dataloader.py](project/utils/dataloader.py) file, and initializing it in the [project/main.py](project/main.py) file.*
 
-Now you can train a model with uncertainty estimation by passing the desired methods to the program. The following methods are available:
+
+After linking the dataset, you can now train a model with uncertainty estimation by passing the desired methods to the program. 
+```bash
+# go to project folder
+cd project
+
+# train model (example: Variational Inference with Bayesian Decomposition)   
+python main.py --epistemic_method varinf --aleatoric_method bayesdecomp
+```
+
+The following methods are available:
 ##### Epistemic uncertainty estimation methods:
 - Monte Carlo Dropout [**mcdropout**]
 - Ensemble [**ensemble**]
@@ -42,13 +52,6 @@ Now you can train a model with uncertainty estimation by passing the desired met
 - Bayesian Decomposition [**bayesdecomp**] (Requires the Variational Inference epistemic method)
 - None [**none**]
 
-```bash
-# go to project folder
-cd project
-
-# train model (example: Variational Inference with Bayesian Decomposition)   
-python main.py --epistemic_method varinf --aleatoric_method bayesdecomp
-```
 
 ### Citation   
 ```
