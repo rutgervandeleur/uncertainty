@@ -40,14 +40,14 @@ python main.py --epistemic_method varinf --aleatoric_method bayesdecomp
 ```
 
 The following methods are available:
-##### Epistemic uncertainty estimation methods:
+#### Epistemic uncertainty estimation methods:
 - Monte Carlo Dropout [**mcdropout**]
 - Ensemble [**ensemble**]
 - Snapshot Ensemble [**ssensemble**]
 - Variational Inference [**varinf**]
 - None [**none**]
 
-##### Aleatoric uncertainty estimation methods:
+#### Aleatoric uncertainty estimation methods:
 - Auxiliary Output [**auxout**]
 - Bayesian Decomposition [**bayesdecomp**] (Requires the Variational Inference epistemic method)
 - None [**none**]
