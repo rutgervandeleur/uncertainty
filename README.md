@@ -22,7 +22,7 @@ cd uncertainty
 pip install -e .   
 pip install -r requirements.txt
  ```
-Next, make sure the [CPSC2018 dataset](http://2018.icbeb.org/Challenge.html) is downloaded and the correct path is set in the CPSC2018 config file
+Next, make sure the [CPSC2018 dataset](http://2018.icbeb.org/Challenge.html) is downloaded and the correct paths are set in the CPSC2018 config file
 ```bash
 # edit config file
 vim project/configs/CPSC2018.json
