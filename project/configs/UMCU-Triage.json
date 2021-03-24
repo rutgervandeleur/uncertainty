@@ -1,6 +1,10 @@
 {
-    "data_dir": "/Users/jeroen/ECG/ecgnet_v3/data/UMCTriage/subset_distributed",
-    "train_labels_csv": "/Users/jeroen/ECG/ecgnet_v3/data/UMCTriage/subset_distributed_train.csv",
-    "test_labels_csv": "/Users/jeroen/ECG/ecgnet_v3/data/UMCTriage/subset_distributed_test.csv",
-    "epochs": 20
+    "data_dir": "/raw_data/umcu_rhythm",
+    "train_labels_csv": "/workspace/triage_train_set.csv",
+    "test_labels_csv": "/workspace/triage_test_set.csv",
+    "val_labels_csv": "/workspace/triage_val_set.csv",
+    "epochs": 20,
+    "OOD_classname": "none", 
+    "max_sample_length" : 5000,
+    "num_classes" : 6
 }

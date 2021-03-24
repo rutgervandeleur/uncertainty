@@ -1,5 +1,6 @@
 import sys
-sys.path.append('..')
+sys.path.append('workspace/uncertainty/utils')
+
 import os
 import torch
 from torch.utils.data import DataLoader
@@ -13,7 +14,6 @@ from pytorch_lightning import loggers as pl_loggers
 import json
 import pandas as pd
 
-from utils.dataset import UniversalECGDataset
 from systems.ecgresnet_uncertainty import ECGResNetUncertaintySystem
 from systems.ecgresnet_auxout import ECGResNetAuxOutSystem
 from systems.ecgresnet_mcdropout import ECGResNetMCDropoutSystem
@@ -24,9 +24,11 @@ from systems.ecgresnet_varinf_bayesdecomp import ECGResNetVariationalInference_B
 from systems.ecgresnet_ensemble_auxout import ECGResNetEnsemble_AuxOutSystem
 from systems.ecgresnet_ssensemble_auxout import ECGResNetSnapshotEnsemble_AuxOutSystem
 from systems.ecgresnet_mcdropout_auxout import ECGResNetMCDropout_AuxOutSystem
-from utils.dataloader import CPSC2018Dataset
-from utils.transforms import ToTensor, Resample
-from utils.transforms import ApplyGain
+from systems.Mixture_of_gaussians.mixture_of_gaussians import VAE_with_Mixture_of_Gaussians
+from utils_.dataloader import CPSC2018Dataset, ECGDataset
+from utils_.transforms import ToTensor, Resample
+from utils_.transforms import ApplyGain
+from utils_.dataset import UniversalECGDataset
 
 def main(args, ECGResNet_params, model_class):
 
@@ -40,6 +42,24 @@ def main(args, ECGResNet_params, model_class):
     if args.dataset == 'UMCU-Triage':
         dataset_params = json.load(open('configs/UMCU-Triage.json', 'r'))
         print('loaded dataset params')
+        trainset = ECGDataset(path_labels_csv = dataset_params['train_labels_csv'],
+                              waveform_dir = dataset_params['data_dir'],
+                              OOD_classname = str(dataset_params['OOD_classname']),
+                              transform = transform,
+                              label_column = 'Label')
+
+        validationset = ECGDataset(path_labels_csv = dataset_params['val_labels_csv'],
+                              waveform_dir = dataset_params['data_dir'],
+                              OOD_classname = str(dataset_params['OOD_classname']),
+                              transform = transform,
+                              label_column = 'Label')
+
+        testset = ECGDataset(path_labels_csv =  dataset_params['test_labels_csv'],
+                              waveform_dir = dataset_params['data_dir'],
+                              OOD_classname = str(dataset_params['OOD_classname']),
+                              transform = transform,
+                              label_column = 'Label')
+
     elif args.dataset == 'CPSC2018':
         dataset_params = json.load(open('configs/CPSC2018.json', 'r'))
         print('loaded dataset params')
@@ -50,13 +70,13 @@ def main(args, ECGResNet_params, model_class):
                               transform = transform,
                               max_sample_length = dataset_params['max_sample_length'])
 
-        validationset = CPSC2018Dataset(path_labels_csv = dataset_params['train_labels_csv'],
+        validationset = CPSC2018Dataset(path_labels_csv = dataset_params['val_labels_csv'],
                               waveform_dir = dataset_params['data_dir'],
                               OOD_classname = str(dataset_params['OOD_classname']),
                               transform = transform,
                               max_sample_length = dataset_params['max_sample_length'])
 
-        testset = CPSC2018Dataset(path_labels_csv = dataset_params['train_labels_csv'],
+        testset = CPSC2018Dataset(path_labels_csv = dataset_params['test_labels_csv'],
                               waveform_dir = dataset_params['data_dir'],
                               OOD_classname = str(dataset_params['OOD_classname']),
                               transform = transform,
@@ -73,8 +93,13 @@ def main(args, ECGResNet_params, model_class):
     test_loader = DataLoader(testset, batch_size=ECGResNet_params['batch_size'], num_workers=8)
 
     # Initialize model
-    model = model_class(**merged_dict)
-    print('Initialized {}'.format(model.__class__.__name__))
+    if "checkpoint_path_" in merged_dict:
+        model = model_class.load_from_checkpoint(merged_dict["checkpoint_path_"],strict=False, **merged_dict)
+
+        print("loaded model from checkpoint")
+    else:
+        model = model_class(**merged_dict)
+        print('Initialized {}'.format(model.__class__.__name__))
 
     # Initialize Logger
     tb_logger = pl_loggers.TensorBoardLogger('lightning_logs/')
@@ -138,6 +163,10 @@ def get_model_class(args):
         # varinf_bayesdecomp
         return ECGResNetVariationalInference_BayesianDecompositionSystem
 
+    elif temp_args.aleatoric_method == 'mixture':
+        # mixture of gaussians
+        return VAE_with_Mixture_of_Gaussians
+
 
 if __name__ == '__main__':
     parser = ArgumentParser()
@@ -145,7 +174,7 @@ if __name__ == '__main__':
 
     # figure out which model to use
     parser.add_argument('--epistemic_method', type=str, default='none', help='mcdropout, ensemble, ssensemble, varinf, none')
-    parser.add_argument('--aleatoric_method', type=str, default='none', help='auxout, bayesdecomp, none')
+    parser.add_argument('--aleatoric_method', type=str, default='none', help='auxout, bayesdecomp, mixture, none')
     parser.add_argument('--dataset', type=str, default='CPSC2018', help='UMCU-Triage, CPSC2018')
 
     # THIS LINE IS KEY TO PULL THE MODEL NAME

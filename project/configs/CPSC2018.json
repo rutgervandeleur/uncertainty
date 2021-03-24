@@ -1,7 +1,8 @@
 {
-    "data_dir": "/Users/jeroen/ECG/data/CPSC2018/validation_set",
-    "train_labels_csv": "/Users/jeroen/ECG/data/CPSC2018/validation_set/CPSC2018_REFERENCES.csv",
-    "test_labels_csv": "/Users/jeroen/ECG/data/CPSC2018/validation_set/CPSC2018_REFERENCES.csv",
+    "data_dir": "/raw_data/umcu_rhythm",
+    "train_labels_csv": "/workspace/triage_train_set.csv",
+    "test_labels_csv": "/workspace/triage_test_set.csv",
+    "val_labels_csv": "/workspace/triage_tiebreak_set.csv",
     "epochs": 60,
     "OOD_classname": "none", 
     "max_sample_length" : 5000,

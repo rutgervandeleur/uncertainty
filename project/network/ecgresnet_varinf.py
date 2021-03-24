@@ -95,7 +95,7 @@ class BayesLinear(nn.Module):
         """
         Returns the Kullback-Leibler divergence between the prior and the posterior of Bayesian layer.
         """
-        return calculate_kl(torch.Tensor([self.mu_prior_init]), torch.exp(torch.Tensor([self.log_sigma_prior_init])),
+        return calculate_kl(torch.Tensor([self.mu_prior_init]).to('cuda'), torch.exp(torch.Tensor([self.log_sigma_prior_init]).to('cuda')),
                             self.w_mu, torch.exp(self.w_log_sigma))
 
 class BayesConv1d(nn.Module):
@@ -192,7 +192,7 @@ class BayesConv1d(nn.Module):
         """
         Returns the Kullback-Leibler divergence between the prior and the posterior of Bayesian layer.
         """
-        return calculate_kl(torch.Tensor([self.mu_prior_init]), torch.exp(torch.Tensor([self.log_sigma_prior_init])),
+        return calculate_kl(torch.Tensor([self.mu_prior_init]).to('cuda'), torch.exp(torch.Tensor([self.log_sigma_prior_init]).to('cuda')),
                             self.w_mu, torch.exp(self.w_log_sigma))
 
 class BayesBasicBlock(nn.Module):
@@ -434,7 +434,7 @@ def kldiv(model):
     """
     Cumulatively calculates the Kullback-Leibler divergence between the prior and the variational posterior for the whole network
     """
-    kl = torch.Tensor([0.0])
+    kl = torch.Tensor([0.0]).to('cuda')
     for c in model.children():
         if hasattr(c, 'children'):
             kl += kldiv(c)

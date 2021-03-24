@@ -1,4 +1,5 @@
 import sys
+
 import os
 import torch
 from argparse import ArgumentParser
@@ -10,7 +11,7 @@ import pytorch_lightning as pl
 from pytorch_lightning.metrics import functional as FM
 
 from network.ecgresnet import ECGResNet
-from utils.focalloss_weights import FocalLoss
+from utils_.focalloss_weights import FocalLoss
 
 class ECGResNetUncertaintySystem(pl.LightningModule):
     """
@@ -18,7 +19,7 @@ class ECGResNetUncertaintySystem(pl.LightningModule):
     """
     def __init__(self, in_channels, n_grps, N, 
                  num_classes, dropout, first_width, stride, 
-                 dilation, learning_rate, loss_weights=None, 
+                 dilation, learning_rate, loss_weights=None, include_classification = True,
                  **kwargs):
         """
         Initializes the ECGResNetUncertaintySystem
@@ -43,7 +44,7 @@ class ECGResNetUncertaintySystem(pl.LightningModule):
         self.model = ECGResNet(in_channels, 
                                n_grps, N, num_classes, 
                                dropout, first_width, 
-                               stride, dilation)
+                               stride, dilation, include_classification)
         if loss_weights is not None:
             weights = torch.tensor(loss_weights, dtype = torch.float)
         else:

@@ -101,7 +101,7 @@ class ECGResNet(nn.Module):
     Once initialized an ResNet object can perform forward.
     """
     def __init__(self, in_channels, n_grps, N, num_classes, dropout, first_width, 
-                 stride, dilation):
+                 stride, dilation, include_classification = True):
         """
         Initializes ECGResNet object. 
 
@@ -118,6 +118,7 @@ class ECGResNet(nn.Module):
         super().__init__()
         self.dropout = dropout
         self.softmax = nn.Softmax(dim=1)
+        self.include_classification = include_classification
         
         num_branches = 2
         first_width = first_width * num_branches
@@ -205,4 +206,7 @@ class ECGResNet(nn.Module):
         x1out = self.flatten(x1)
         x2 = self.features2(x1)
         x2out = self.flatten(x2)
-        return self.fc1(x1out), self.fc2(x2out)
+        if self.include_classification:
+            return self.fc1(x1out), self.fc2(x2out)
+        else:
+            return x1out, x2out
