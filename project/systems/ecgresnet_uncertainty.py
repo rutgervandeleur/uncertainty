@@ -51,6 +51,7 @@ class ECGResNetUncertaintySystem(pl.LightningModule):
             weights = loss_weights
 
         self.loss = FocalLoss(gamma=1, weights = weights)
+        self.softmax = nn.Softmax(dim=1)
 
     def forward(self, x):
         """
@@ -88,19 +89,17 @@ class ECGResNetUncertaintySystem(pl.LightningModule):
         data, target = batch['waveform'], batch['label']
         output1, output2 = self(data)
         val_loss = self.loss(output2.squeeze(), target)
-        acc = FM.accuracy(output2.squeeze(), target)
+        acc = FM.accuracy(self.softmax(output2.squeeze()), target)
 
         # loss is tensor. The Checkpoint Callback is monitoring 'checkpoint_on'
         metrics = {'val_acc': acc.item(), 'val_loss': val_loss.item()}
         self.log_dict(metrics)
-        # self.log(metrics)
         return metrics
 
     def test_step(self, batch, batch_idx):
         metrics = self.validation_step(batch, batch_idx)
         metrics = {'test_acc': metrics['val_acc'], 'test_loss': metrics['val_loss']}
         print(metrics)
-        # self.log(metrics)
         self.log_dict(metrics)
 
     def configure_optimizers(self):

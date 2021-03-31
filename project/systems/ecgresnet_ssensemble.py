@@ -73,6 +73,7 @@ class ECGResNetSnapshotEnsembleSystem(pl.LightningModule):
             weights = loss_weights
 
         self.loss = FocalLoss(gamma=1, weights = weights)
+        self.softmax = nn.Softmax(dim=1)
         create_weights_directory()
 
     def forward(self, x, model_idx):
@@ -87,7 +88,7 @@ class ECGResNetSnapshotEnsembleSystem(pl.LightningModule):
             Output1: Output at the auxiliary point of the ensemble member
             Output2: Output at the end of the ensemble member
         """
-        output1, output2 = self.models[model_idx](x)
+        output1, output2 = self.models[model_idx].to(self.device)(x)
             
         return output1, output2
 
@@ -159,7 +160,7 @@ class ECGResNetSnapshotEnsembleSystem(pl.LightningModule):
         output1, output2 = self(data, i)
 
         val_loss = self.loss(output2, target)
-        acc = FM.accuracy(output2, target)
+        acc = FM.accuracy(self.softmax(output2), target)
 
         # Log metrics
         metrics = {'val_loss': val_loss.item(), 'val_acc': acc.item()}

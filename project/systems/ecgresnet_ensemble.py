@@ -60,10 +60,11 @@ class ECGResNetEnsembleSystem(pl.LightningModule):
 
         # Initialize mutliple ensemble members
         for i in range(self.ensemble_size):
-            self.models.append(ECGResNet(in_channels, 
-                               n_grps, N, num_classes, 
-                               dropout, first_width, 
-                               stride, dilation))
+            model = ECGResNet(in_channels, 
+                              n_grps, N, num_classes, 
+                              dropout, first_width, 
+                              stride, dilation)
+            self.models.append(model)
 
         if loss_weights is not None:
             weights = torch.tensor(loss_weights, dtype = torch.float)
@@ -83,7 +84,7 @@ class ECGResNetEnsembleSystem(pl.LightningModule):
             Output1: Output at the auxiliary point of the ensemble member
             Output2: Output at the end of the ensemble member
         """
-        output1, output2 = self.models[model_idx](x)
+        output1, output2 = self.models[model_idx].to(self.device)(x)
             
         return output1, output2
 
@@ -122,7 +123,7 @@ class ECGResNetEnsembleSystem(pl.LightningModule):
         return {'loss': average_train_loss}
 
     def validation_step(self, batch, batch_idx):
-        prediction_individual = torch.empty(batch['label'].shape[0], self.ensemble_size, self.num_classes)
+        prediction_individual = torch.empty(batch['label'].shape[0], self.ensemble_size, self.num_classes).to(self.device)
 
         data, target = batch['waveform'], batch['label']
 
@@ -130,7 +131,7 @@ class ECGResNetEnsembleSystem(pl.LightningModule):
         for i, model in enumerate(self.models):
             output1, output2 = self(data, i)
 
-            prediction_individual[:, i] = output2.data
+            prediction_individual[:, i] = output2
             
         # Calculate mean and variance over predictions from individual ensemble members
         prediction_ensemble_mean = F.softmax(torch.mean(prediction_individual, dim=1), dim=1)

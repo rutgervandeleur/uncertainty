@@ -172,7 +172,7 @@ class ECGResNet_MCDropout_AuxOutput(nn.Module):
         
         return predictions, predictions_mean, predictions_var, log_variances_mean, predictions_mean_no_sm 
 
-    def sample_logits(self, T, input, log_var, average=True):
+    def sample_logits(self, T, input, log_var, average=True, device='cpu'):
         """
         Takes T samples from the logits, by corrupting the network output with
         Gaussian noise with variance determined by the networks auxiliary
@@ -195,7 +195,7 @@ class ECGResNet_MCDropout_AuxOutput(nn.Module):
         f = input[:, None, :].repeat(1, T, 1)
 
         # Take T samples from the Gaussian distribution
-        epsilon = self.Gauss.sample([input.shape[0], T])
+        epsilon = self.Gauss.sample([input.shape[0], T]).to(device)
 
         # Multiply Gaussian noise with variance, and add to the prediction
         x_i = f + (sigma * epsilon) 

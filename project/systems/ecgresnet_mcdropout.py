@@ -63,6 +63,7 @@ class ECGResNetMCDropoutSystem(pl.LightningModule):
             weights = loss_weights
 
         self.loss = FocalLoss(gamma=1, weights = weights)
+        self.softmax = nn.Softmax(dim=1)
 
     def forward(self, x):
         """
@@ -102,7 +103,7 @@ class ECGResNetMCDropoutSystem(pl.LightningModule):
         data, target = batch['waveform'], batch['label']
         output1, output2 = self(data)
         val_loss = self.loss(output2.squeeze(), target)
-        acc = FM.accuracy(output2.squeeze(), target)
+        acc = FM.accuracy(self.softmax(output2.squeeze()), target)
 
         # loss is tensor. The Checkpoint Callback is monitoring 'checkpoint_on'
         metrics = {'val_loss': val_loss.item(), 'val_acc': acc.item()}

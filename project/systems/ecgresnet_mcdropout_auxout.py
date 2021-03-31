@@ -98,7 +98,7 @@ class ECGResNetMCDropout_AuxOutSystem(pl.LightningModule):
         output1, output2_mean, output2_log_var = self(data)
 
         # Sample from logits, returning a vector x_i
-        x_i = self.model.sample_logits(self.n_logit_samples, output2_mean, output2_log_var, average=True)
+        x_i = self.model.sample_logits(self.n_logit_samples, output2_mean, output2_log_var, average=True, device=self.device)
             
         train_loss1 = self.loss(output1, target)
         train_loss2 = self.loss(x_i, target)
@@ -115,7 +115,7 @@ class ECGResNetMCDropout_AuxOutSystem(pl.LightningModule):
         _, output2_mean, output2_log_var = self(data)
             
         # Sample from logits, returning a  vector x_i
-        x_i = self.model.sample_logits(self.n_logit_samples, output2_mean, output2_log_var, average=True)
+        x_i = self.model.sample_logits(self.n_logit_samples, output2_mean, output2_log_var, average=True, device=self.device)
         
         # Apply softmax to obtain probability vector p_i
         p_i = F.softmax(x_i, dim=1)

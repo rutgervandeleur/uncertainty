@@ -75,6 +75,7 @@ class ECGResNetSnapshotEnsemble_AuxOutSystem(pl.LightningModule):
             weights = loss_weights
 
         self.loss = FocalLoss(gamma=1, weights = weights)
+        self.softmax = nn.Softmax(dim=1)
         create_weights_directory()
 
     def forward(self, x, model_idx):
@@ -90,7 +91,7 @@ class ECGResNetSnapshotEnsemble_AuxOutSystem(pl.LightningModule):
             output2_log_var: The log variance of the ensemble_member
         """
 
-        output1, output2_mean, output2_log_var = self.models[model_idx](x)
+        output1, output2_mean, output2_log_var = self.models[model_idx].to(self.device)(x)
             
         return output1, output2_mean, output2_log_var
 
@@ -120,7 +121,7 @@ class ECGResNetSnapshotEnsemble_AuxOutSystem(pl.LightningModule):
         output1, output2_mean, output2_log_var = self(data, model_idx)
 
         # Sample from logits, returning a vector x_i
-        x_i = self.models[model_idx].sample_logits(self.n_logit_samples, output2_mean, output2_log_var, average=True)
+        x_i = self.models[model_idx].sample_logits(self.n_logit_samples, output2_mean, output2_log_var, average=True, device=self.device)
 
         train_loss1 = self.loss(output1, target)
         train_loss2 = self.loss(x_i, target)
@@ -164,13 +165,13 @@ class ECGResNetSnapshotEnsemble_AuxOutSystem(pl.LightningModule):
         _, output2_mean, output2_log_var = self(data, model_idx)
 
         # Sample from logits, returning vector x_i
-        x_i = self.models[model_idx].sample_logits(self.n_logit_samples, output2_mean, output2_log_var, average=True)
+        x_i = self.models[model_idx].sample_logits(self.n_logit_samples, output2_mean, output2_log_var, average=True, device=self.device)
 
         # Apply softmax to obtain probability vector p_i
         p_i = F.softmax(x_i, dim=1)
         
         val_loss = self.loss(p_i, target)
-        acc = FM.accuracy(p_i, target)
+        acc = FM.accuracy(self.softmax(p_i), target)
 
         # Log metrics
         metrics = {'val_loss': val_loss.item(), 'val_acc': acc.item()}
@@ -216,7 +217,7 @@ class ECGResNetSnapshotEnsemble_AuxOutSystem(pl.LightningModule):
             _, output2_mean, output2_log_var = self(data, model_idx)
 
             # Sample from logits, returning a  vector x_i
-            x_i = self.models[model_idx].sample_logits(self.n_logit_samples, output2_mean, output2_log_var, average=True)
+            x_i = self.models[model_idx].sample_logits(self.n_logit_samples, output2_mean, output2_log_var, average=True, device=self.device)
 
             prediction_individual[:, model_idx] = x_i.data
 

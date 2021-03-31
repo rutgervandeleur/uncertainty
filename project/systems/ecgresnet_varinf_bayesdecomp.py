@@ -78,6 +78,7 @@ class ECGResNetVariationalInference_BayesianDecompositionSystem(pl.LightningModu
             weights = loss_weights
 
         self.loss = FocalLoss(gamma=1, weights = weights)
+        self.softmax = nn.Softmax(dim=1)
 
     def forward(self, x):
         """
@@ -154,7 +155,7 @@ class ECGResNetVariationalInference_BayesianDecompositionSystem(pl.LightningModu
         kl_weighted = beta * kl
 
         # Calculate accuracy
-        acc = FM.accuracy(output2.squeeze(), target)
+        acc = FM.accuracy(self.softmax(output2.squeeze()), target)
 
         # Loss is tensor
         metrics = {'val_loss': val_loss.item(), 'val_acc': acc.item()}

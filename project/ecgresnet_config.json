@@ -8,19 +8,19 @@
     "stride": [2,1,2,1],
     "num_classes": 6,
     "dilation": 100,
-    "data_dir": "/raw_data/umcu_rhythm",
-    "train_labels_csv": "/training/template/datasets/template_train.csv",
-    "test_labels_csv": "/training/template/datasets/template_test.csv",
     "learning_rate": 0.00005,
     "batch_size": 50,
     "max_epochs": 25,
+    "test": false,
     "beta":2000,
     "latent_dim" : 64,
     "encoder_output_dim" : 5120,
     "visualize" : "True",
     "modes" : [ "train"],
     "losses" : ["kl", "reconstruction"],
+    "pretrained_encoder": false,
     "checkpoint_path_":"/workspace/uncertainty/project/lightning_logs/default/version_112/checkpoints/epoch=3-step=25381.ckpt",
+    "pretrained_decoder": false,
     "pretrained_decoder" : "/workspace/uncertainty/project/systems/Mixture_of_gaussians/checkpoints/pretrained_decoder.sav"
 }
 

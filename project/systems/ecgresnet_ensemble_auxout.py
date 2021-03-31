@@ -88,7 +88,7 @@ class ECGResNetEnsemble_AuxOutSystem(pl.LightningModule):
             output2_log_var: The log variance of the ensemble_member
         """
 
-        output1, output2_mean, output2_log_var = self.models[model_idx](x)
+        output1, output2_mean, output2_log_var = self.models[model_idx].to(self.device)(x)
             
         return output1, output2_mean, output2_log_var
 
@@ -110,7 +110,7 @@ class ECGResNetEnsemble_AuxOutSystem(pl.LightningModule):
             output1, output2_mean, output2_log_var = self(data, model_idx)
 
             # Sample from logits, returning a vector x_i
-            x_i = self.models[model_idx].sample_logits(self.n_logit_samples, output2_mean, output2_log_var, average=True)
+            x_i = self.models[model_idx].sample_logits(self.n_logit_samples, output2_mean, output2_log_var, average=True, device=self.device)
 
             train_loss1 = self.loss(output1, target)
             train_loss2 = self.loss(x_i, target)
@@ -130,7 +130,7 @@ class ECGResNetEnsemble_AuxOutSystem(pl.LightningModule):
         return {'loss': average_train_loss}
 
     def validation_step(self, batch, batch_idx):
-        prediction_individual = torch.empty(batch['label'].shape[0], self.ensemble_size, self.num_classes)
+        prediction_individual = torch.empty(batch['label'].shape[0], self.ensemble_size, self.num_classes).to(self.device)
 
         data, target = batch['waveform'], batch['label']
 
@@ -140,7 +140,7 @@ class ECGResNetEnsemble_AuxOutSystem(pl.LightningModule):
             _, output2_mean, output2_log_var = self(data, model_idx)
 
             # Sample from logits, returning avector x_i
-            x_i = self.models[model_idx].sample_logits(self.n_logit_samples, output2_mean, output2_log_var, average=True)
+            x_i = self.models[model_idx].sample_logits(self.n_logit_samples, output2_mean, output2_log_var, average=True, device=self.device)
 
             prediction_individual[:, model_idx] = x_i
             
@@ -169,7 +169,7 @@ class ECGResNetEnsemble_AuxOutSystem(pl.LightningModule):
             _, output2_mean, output2_log_var = self(data, model_idx)
 
             # Sample from logits, returning a  vector x_i
-            x_i = self.models[model_idx].sample_logits(self.n_logit_samples, output2_mean, output2_log_var, average=True)
+            x_i = self.models[model_idx].sample_logits(self.n_logit_samples, output2_mean, output2_log_var, average=True, device=self.device)
 
             prediction_individual[:, model_idx] = x_i.data
 

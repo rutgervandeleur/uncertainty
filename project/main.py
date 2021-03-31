@@ -9,6 +9,7 @@ from torchvision import transforms
 from argparse import ArgumentParser
 import pytorch_lightning as pl
 from pytorch_lightning import Trainer
+from pytorch_lightning.callbacks import ModelCheckpoint
 from pytorch_lightning import loggers as pl_loggers
 
 import json
@@ -93,8 +94,8 @@ def main(args, ECGResNet_params, model_class):
     test_loader = DataLoader(testset, batch_size=ECGResNet_params['batch_size'], num_workers=8)
 
     # Initialize model
-    if "checkpoint_path_" in merged_dict:
-        model = model_class.load_from_checkpoint(merged_dict["checkpoint_path_"],strict=False, **merged_dict)
+    if merged_dict['pretrained_encoder']:
+        model = model_class.load_from_checkpoint(merged_dict["checkpoint_path_"], strict=False, **merged_dict)
 
         print("loaded model from checkpoint")
     else:
@@ -104,14 +105,22 @@ def main(args, ECGResNet_params, model_class):
     # Initialize Logger
     tb_logger = pl_loggers.TensorBoardLogger('lightning_logs/')
 
+    # Initialize model checkpoint,
+    checkpoint_callback = ModelCheckpoint(monitor='val_loss')
+    
     # Initialize trainer
-    trainer = Trainer.from_argparse_args(args, max_epochs=ECGResNet_params['max_epochs'], logger=tb_logger)
-
+    trainer = Trainer.from_argparse_args(args, 
+                                         max_epochs=ECGResNet_params['max_epochs'], 
+                                         logger=tb_logger,
+#                                         fast_dev_run=True,
+                                         callbacks=[checkpoint_callback])
+    
     # Train model
     trainer.fit(model, train_loader, val_loader)
-
+    
     # Test model
-    trainer.test(test_dataloaders=test_loader)
+    if merged_dict['test']:
+        trainer.test(test_dataloaders=test_loader)
 
     # Save model
     model.save_results()
@@ -173,9 +182,9 @@ if __name__ == '__main__':
     parser = Trainer.add_argparse_args(parser)
 
     # figure out which model to use
-    parser.add_argument('--epistemic_method', type=str, default='none', help='mcdropout, ensemble, ssensemble, varinf, none')
-    parser.add_argument('--aleatoric_method', type=str, default='none', help='auxout, bayesdecomp, mixture, none')
-    parser.add_argument('--dataset', type=str, default='CPSC2018', help='UMCU-Triage, CPSC2018')
+    parser.add_argument('--epistemic_method', type=str, default='none', choices=['mcdropout', 'ensemble', 'ssensemble', 'varinf', 'none'])
+    parser.add_argument('--aleatoric_method', type=str, default='none', choices=['auxout', 'bayesdecomp', 'mixture', 'none'])
+    parser.add_argument('--dataset', type=str, default='CPSC2018', choices=['UMCU-Triage', 'CPSC2018'])
 
     # THIS LINE IS KEY TO PULL THE MODEL NAME
     temp_args, _ = parser.parse_known_args()
