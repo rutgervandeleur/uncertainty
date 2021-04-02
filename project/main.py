@@ -1,5 +1,4 @@
 import sys
-sys.path.append('..')
 import os
 import torch
 from torch.utils.data import DataLoader
@@ -24,7 +23,7 @@ from systems.ecgresnet_varinf_bayesdecomp import ECGResNetVariationalInference_B
 from systems.ecgresnet_ensemble_auxout import ECGResNetEnsemble_AuxOutSystem
 from systems.ecgresnet_ssensemble_auxout import ECGResNetSnapshotEnsemble_AuxOutSystem
 from systems.ecgresnet_mcdropout_auxout import ECGResNetMCDropout_AuxOutSystem
-from utils.dataloader import CPSC2018Dataset
+from utils.dataloader import CPSC2018Dataset, ECGDataset
 from utils.transforms import ToTensor, Resample
 from utils.transforms import ApplyGain
 
@@ -40,6 +39,25 @@ def main(args, ECGResNet_params, model_class):
     if args.dataset == 'UMCU-Triage':
         dataset_params = json.load(open('configs/UMCU-Triage.json', 'r'))
         print('loaded dataset params')
+        trainset = ECGDataset(path_labels_csv = dataset_params['train_labels_csv'],
+                              waveform_dir = dataset_params['data_dir'],
+                              OOD_classname = str(dataset_params['OOD_classname']),
+                              transform = transform,
+                              label_column = 'Label')
+
+        validationset = ECGDataset(path_labels_csv = dataset_params['val_labels_csv'],
+                              waveform_dir = dataset_params['data_dir'],
+                              OOD_classname = str(dataset_params['OOD_classname']),
+                              transform = transform,
+                              label_column = 'Label')
+
+        testset = ECGDataset(path_labels_csv =  dataset_params['test_labels_csv'],
+                              waveform_dir = dataset_params['data_dir'],
+                              OOD_classname = str(dataset_params['OOD_classname']),
+                              transform = transform,
+                              label_column = 'Label')
+        
+        
     elif args.dataset == 'CPSC2018':
         dataset_params = json.load(open('configs/CPSC2018.json', 'r'))
         print('loaded dataset params')

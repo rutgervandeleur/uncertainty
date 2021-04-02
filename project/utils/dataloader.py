@@ -32,7 +32,7 @@ import matplotlib.pyplot as plt
 ################################################################################
 
 class ECGDataset(Dataset):
-    def __init__(self, path_labels_csv, waveform_dir, OOD_classname, label_column, transform=None, assert_shape=True, get_age=True, get_gender=True):
+    def __init__(self, path_labels_csv, waveform_dir, OOD_classname, label_column, transform=None, assert_shape=False, get_age=True, get_gender=True):
         """
         Args:
             path_labels_csv (string): Path to the csv file with PseudoID, TestID and Label.
@@ -59,20 +59,27 @@ class ECGDataset(Dataset):
 
     def __getitem__(self, idx, assert_shape=True):
         if self.umc:
-            waveform = np.load(os.path.join(self.waveform_dir, generate_path(self.path_labels['PseudoID'].iloc[idx]), str(self.path_labels['TestID'].iloc[idx])) + '.npy')
-            if assert_shape==True:
-                if assert_shape_match(waveform, (8, 5000)):
-                    label = self.path_labels[self.label_column].iloc[idx]
-                    age = self.path_labels['Age'].iloc[idx] if self.get_age else 0
-                    gender = self.path_labels['Gender'].iloc[idx] if self.get_gender else 0
-                    id = self.path_labels['TestID'].iloc[idx]
-                else:
-                    return None
-            else:
+            filepath = os.path.join(self.waveform_dir, generate_path(self.path_labels['PseudoID'].iloc[idx]), str(self.path_labels['TestID'].iloc[idx])) + '.npy'
+            if os.path.isfile(filepath):
+
+                waveform = np.load(filepath)
+                if self.path_labels['PseudoID'].iloc[idx] == 1:
+                    waveform *= (random.randrange(70,130) / 100)
+                    waveform = np.roll(waveform, random.randrange(100, 1000)) 
+                if assert_shape==True:
+                    assert waveform.shape == (8, 5000)
+
+                    
                 label = self.path_labels[self.label_column].iloc[idx]
                 age = self.path_labels['Age'].iloc[idx] if self.get_age else 0
                 gender = self.path_labels['Gender'].iloc[idx] if self.get_gender else 0
                 id = self.path_labels['TestID'].iloc[idx]
+            
+            else:
+                print("error in file path")
+                print(filepath)
+                print(self.path_labels['PseudoID'].iloc[idx])
+                return
                 
         else:
             waveform = np.loadtxt(os.path.join(self.waveform_dir, self.path_labels[idx]), delimiter = ',').transpose()

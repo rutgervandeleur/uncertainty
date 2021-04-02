@@ -15,7 +15,7 @@ MEDIAN_WAVEFORM_DIR = '/home/jupyter-jeroen/median_python'
 def generate_path(pseudo_id):
     """ Generates path with the following structure: ps/eu/doid """
     pseudo_id = str(pseudo_id)
-    return pseudo_id[0:2] + '/' + pseudo_id[2:4] + '/' + pseudo_id[4:-1]
+    return pseudo_id[0:2] + '/' + pseudo_id[2:4] + '/' + pseudo_id[4:]
 
 
 def get_waveform_path(pseudo_id, test_id, waveform_dir=WAVEFORM_DIR):
