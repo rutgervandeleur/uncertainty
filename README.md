@@ -58,7 +58,7 @@ The following methods are available:
 @article{VrankenUncertainty2021,
   title={Uncertainty estimation for deep learning-based automated analysis of 12-lead electrocardiograms},
   author={Jeroen F. Vranken, Rutger R. van de Leur, Deepak K. Gupta, Luis E. Juarez Orozco, Rutger J. Hassink, Pim van der Harst, Pieter A. Doevendans, Sadaf Gulshad, René van Es},
-  journal={submitted},
+  journal={European Heart Journal: Digital Health},
   year={2021}
 }
 ```   
