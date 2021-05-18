@@ -131,7 +131,7 @@ class ECGResNetAuxOutSystem(pl.LightningModule):
         _, output2_mean, output2_log_var = self(data)
             
         # Sample from logits, returning a  vector x_i
-        x_i = self.model.sample_logits(self.n_logit_samples, output2_mean, output2_log_var, average=True)
+        x_i = self.model.sample_logits(self.n_logit_samples, output2_mean, output2_log_var, average=True).type_as(data)
         
         # Apply softmax to obtain probability vector p_i
         p_i = F.softmax(x_i, dim=1)

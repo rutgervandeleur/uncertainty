@@ -195,7 +195,7 @@ class ECGResNet_MCDropout_AuxOutput(nn.Module):
         f = input[:, None, :].repeat(1, T, 1)
 
         # Take T samples from the Gaussian distribution
-        epsilon = self.Gauss.sample([input.shape[0], T])
+        epsilon = self.Gauss.sample([input.shape[0], T]).type_as(input)
 
         # Multiply Gaussian noise with variance, and add to the prediction
         x_i = f + (sigma * epsilon) 

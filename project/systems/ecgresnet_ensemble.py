@@ -58,7 +58,7 @@ class ECGResNetEnsembleSystem(pl.LightningModule):
         self.models = []
         self.optimizers = []
 
-        # Device needs to be selected because PyTorch Lightning does not
+        # Device needs to be selected manually because PyTorch Lightning does not
         # recognize multiple models when in list
         manual_device = torch.device('cuda' if torch.cuda.is_available() and kwargs['gpus'] != 0 else 'cpu')
 
