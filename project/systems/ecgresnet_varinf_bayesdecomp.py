@@ -58,7 +58,10 @@ class ECGResNetVariationalInference_BayesianDecompositionSystem(pl.LightningModu
 
         self.train_dataset_size = train_dataset_size
         self.val_dataset_size = val_dataset_size
-        self.batch_size = batch_size 
+        self.batch_size = batch_size
+
+        # Register initial KL divergence to remain device-agnostic
+        self.register_buffer('kl_init', torch.Tensor([0.0]))
 
         self.IDs = torch.empty(0).type(torch.LongTensor)
         self.predicted_labels = torch.empty(0).type(torch.LongTensor)
@@ -111,7 +114,7 @@ class ECGResNetVariationalInference_BayesianDecompositionSystem(pl.LightningModu
         train_loss2 = self.loss(output2, target)
 
         # Calculate kl divergence over all Bayesian layers
-        kl_clean = kldiv(self.model) 
+        kl_clean = kldiv(self.model, self.kl_init) 
     
         # Weight the KL divergence, so it does not overflow the loss term
         kl = self.model.weight_kl(kl_clean, self.train_dataset_size)
@@ -143,7 +146,7 @@ class ECGResNetVariationalInference_BayesianDecompositionSystem(pl.LightningModu
         val_loss = self.loss(output2, target)
         
         # Calculate KL divergence between the approximate posterior and the prior over all Bayesian layers
-        kl_clean = kldiv(self.model) 
+        kl_clean = kldiv(self.model, self.kl_init) 
 
         # Weight the KL divergence, so it does not overflow the loss term
         kl = self.model.weight_kl(kl_clean, self.val_dataset_size)      
