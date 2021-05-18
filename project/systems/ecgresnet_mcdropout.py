@@ -52,11 +52,6 @@ class ECGResNetMCDropoutSystem(pl.LightningModule):
         self.register_buffer('correct_predictions', torch.empty(0).type(torch.BoolTensor))
         self.register_buffer('epistemic_uncertainty', torch.empty(0).type(torch.FloatTensor))
 
-        # self.IDs = torch.empty(0).type(torch.LongTensor)
-        # self.predicted_labels = torch.empty(0).type(torch.LongTensor)
-        # self.correct_predictions = torch.empty(0).type(torch.BoolTensor)
-        # self.epistemic_uncertainty = torch.empty(0).type(torch.FloatTensor)
-
         self.model = ECGResNet_MCDropout(in_channels, 
                                n_grps, N, num_classes, 
                                dropout, first_width, 
