@@ -38,11 +38,7 @@ cd project
 # train model (example: Variational Inference with Bayesian Decomposition)   
 python main.py --epistemic_method varinf --aleatoric_method bayesdecomp
 ```
-For ensembling (ensemble, ssensemble) methods, the models are run on the GPU by default when torch.cuda.is_available(). If you want to run on the cpu instead, pass:
-```
-gpus 0
-```
-to main call.
+For ensembling (ensemble, ssensemble) methods, the models are run on the GPU by default when ```torch.cuda.is_available()```. If you want to run on the cpu instead, pass:```gpus 0``` to main call.
 
 The following methods are available:
 #### Epistemic uncertainty estimation methods:
