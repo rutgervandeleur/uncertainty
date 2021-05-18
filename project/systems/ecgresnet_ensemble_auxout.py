@@ -8,7 +8,6 @@ import numpy as np
 from torch import nn, optim
 import torch.nn.functional as F
 from torch.utils.data import DataLoader, random_split
-from icecream import ic
 
 import pytorch_lightning as pl
 from pytorch_lightning.metrics import functional as FM
@@ -52,12 +51,12 @@ class ECGResNetEnsemble_AuxOutSystem(pl.LightningModule):
         self.ensemble_size = ensemble_size
         self.n_logit_samples = n_logit_samples
 
-        self.IDs = torch.empty(0).type(torch.LongTensor)
-        self.predicted_labels = torch.empty(0).type(torch.LongTensor)
-        self.correct_predictions = torch.empty(0).type(torch.BoolTensor)
-        self.epistemic_uncertainty = torch.empty(0).type(torch.FloatTensor)
-        self.aleatoric_uncertainty = torch.empty(0).type(torch.FloatTensor)
-        self.total_uncertainty = torch.empty(0).type(torch.FloatTensor)
+        self.register_buffer('IDs', torch.empty(0).type(torch.LongTensor))
+        self.register_buffer('predicted_labels', torch.empty(0).type(torch.LongTensor))
+        self.register_buffer('correct_predictions', torch.empty(0).type(torch.BoolTensor))
+        self.register_buffer('aleatoric_uncertainty', torch.empty(0).type(torch.FloatTensor))
+        self.register_buffer('epistemic_uncertainty', torch.empty(0).type(torch.FloatTensor))
+        self.register_buffer('total_uncertainty', torch.empty(0).type(torch.FloatTensor))
 
         self.models = []
         self.optimizers = []
@@ -183,10 +182,10 @@ class ECGResNetEnsemble_AuxOutSystem(pl.LightningModule):
             
         # Calculate mean and variance over predictions from individual ensemble members
         prediction_ensemble_mean = F.softmax(torch.mean(prediction_individual, dim=1), dim=1).type_as(data)
-        prediction_ensemble_var = torch.var(prediction_individual, dim=1)
+        prediction_ensemble_var = torch.var(prediction_individual, dim=1).type_as(data)
 
         # Get the average aleatoric uncertainty for each prediction
-        prediction_aleatoric_var = torch.mean(aleatoric_var, dim=1)
+        prediction_aleatoric_var = torch.mean(aleatoric_var, dim=1).type_as(data)
 
         # Select the predicted labels
         predicted_labels = prediction_ensemble_mean.argmax(dim=1)
@@ -196,11 +195,11 @@ class ECGResNetEnsemble_AuxOutSystem(pl.LightningModule):
 
         # Get the epistemic variance of the predicted labels by selecting the variance of
         # the labels with highest average Softmax value
-        predicted_labels_var = torch.gather(prediction_ensemble_var, 1, prediction_ensemble_mean.argmax(dim=1).unsqueeze_(1))[:, 0].cpu()
+        predicted_labels_var = torch.gather(prediction_ensemble_var, 1, prediction_ensemble_mean.argmax(dim=1).unsqueeze_(1))[:, 0]
 
         # Get the aleatoric variance of the predicted labels by selecting the variance of
         # the labels with highest average Softmax value
-        predicted_labels_aleatoric_var = torch.gather(prediction_aleatoric_var, 1, prediction_ensemble_mean.argmax(dim=1).unsqueeze_(1))[:, 0].cpu()
+        predicted_labels_aleatoric_var = torch.gather(prediction_aleatoric_var, 1, prediction_ensemble_mean.argmax(dim=1).unsqueeze_(1))[:, 0]
 
         total_var = predicted_labels_var + predicted_labels_aleatoric_var
         
@@ -213,7 +212,7 @@ class ECGResNetEnsemble_AuxOutSystem(pl.LightningModule):
         self.epistemic_uncertainty = torch.cat((self.epistemic_uncertainty, predicted_labels_var), 0)
         self.aleatoric_uncertainty = torch.cat((self.aleatoric_uncertainty, predicted_labels_aleatoric_var), 0)
         self.total_uncertainty = torch.cat((self.total_uncertainty, total_var), 0)
-        self.correct_predictions = torch.cat((self.correct_predictions, torch.eq(predicted_labels, target.data.cpu())), 0)
+        self.correct_predictions = torch.cat((self.correct_predictions, torch.eq(predicted_labels, target.data)), 0)
 
         return {'test_loss': test_loss.item(), 'test_acc': acc.item(), 'test_loss': test_loss.item()}
 
@@ -239,12 +238,12 @@ class ECGResNetEnsemble_AuxOutSystem(pl.LightningModule):
         Combine results into single dataframe and save to disk as .csv file
         """
         results = pd.concat([
-            pd.DataFrame(self.IDs.numpy(), columns= ['ID']),  
-            pd.DataFrame(self.predicted_labels.numpy(), columns= ['predicted_label']),
-            pd.DataFrame(self.correct_predictions.numpy(), columns= ['correct_prediction']),
-            pd.DataFrame(self.epistemic_uncertainty.numpy(), columns= ['epistemic_uncertainty']), 
-            pd.DataFrame(self.aleatoric_uncertainty.numpy(), columns= ['aleatoric_uncertainty']), 
-            pd.DataFrame(self.total_uncertainty.numpy(), columns= ['total_uncertainty']), 
+            pd.DataFrame(self.IDs.cpu().numpy(), columns= ['ID']),  
+            pd.DataFrame(self.predicted_labels.cpu().numpy(), columns= ['predicted_label']),
+            pd.DataFrame(self.correct_predictions.cpu().numpy(), columns= ['correct_prediction']),
+            pd.DataFrame(self.epistemic_uncertainty.cpu().numpy(), columns= ['epistemic_uncertainty']), 
+            pd.DataFrame(self.aleatoric_uncertainty.cpu().numpy(), columns= ['aleatoric_uncertainty']), 
+            pd.DataFrame(self.total_uncertainty.cpu().numpy(), columns= ['total_uncertainty']), 
         ], axis=1)
 
         create_results_directory()

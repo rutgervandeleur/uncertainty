@@ -63,12 +63,12 @@ class ECGResNetVariationalInference_BayesianDecompositionSystem(pl.LightningModu
         # Register initial KL divergence to remain device-agnostic
         self.register_buffer('kl_init', torch.Tensor([0.0]))
 
-        self.IDs = torch.empty(0).type(torch.LongTensor)
-        self.predicted_labels = torch.empty(0).type(torch.LongTensor)
-        self.correct_predictions = torch.empty(0).type(torch.BoolTensor)
-        self.epistemic_uncertainty = torch.empty(0).type(torch.FloatTensor)
-        self.aleatoric_uncertainty = torch.empty(0).type(torch.FloatTensor)
-        self.total_uncertainty = torch.empty(0).type(torch.FloatTensor)
+        self.register_buffer('IDs', torch.empty(0).type(torch.LongTensor))
+        self.register_buffer('predicted_labels', torch.empty(0).type(torch.LongTensor))
+        self.register_buffer('correct_predictions', torch.empty(0).type(torch.BoolTensor))
+        self.register_buffer('aleatoric_uncertainty', torch.empty(0).type(torch.FloatTensor))
+        self.register_buffer('epistemic_uncertainty', torch.empty(0).type(torch.FloatTensor))
+        self.register_buffer('total_uncertainty', torch.empty(0).type(torch.FloatTensor))
 
         self.model = ECGResNet_VariationalInference(in_channels, 
                                n_grps, N, num_classes, 
@@ -224,12 +224,12 @@ class ECGResNetVariationalInference_BayesianDecompositionSystem(pl.LightningModu
         Combine results into single dataframe and save to disk as .csv file
         """
         results = pd.concat([
-            pd.DataFrame(self.IDs.numpy(), columns= ['ID']),  
-            pd.DataFrame(self.predicted_labels.numpy(), columns= ['predicted_label']),
-            pd.DataFrame(self.correct_predictions.numpy(), columns= ['correct_prediction']),
-            pd.DataFrame(self.epistemic_uncertainty.numpy(), columns= ['epistemic_uncertainty']), 
-            pd.DataFrame(self.aleatoric_uncertainty.numpy(), columns= ['aleatoric_uncertainty']), 
-            pd.DataFrame(self.total_uncertainty.numpy(), columns= ['total_uncertainty']), 
+            pd.DataFrame(self.IDs.cpu().numpy(), columns= ['ID']),  
+            pd.DataFrame(self.predicted_labels.cpu().numpy(), columns= ['predicted_label']),
+            pd.DataFrame(self.correct_predictions.cpu().numpy(), columns= ['correct_prediction']),
+            pd.DataFrame(self.epistemic_uncertainty.cpu().numpy(), columns= ['epistemic_uncertainty']), 
+            pd.DataFrame(self.aleatoric_uncertainty.cpu().numpy(), columns= ['aleatoric_uncertainty']), 
+            pd.DataFrame(self.total_uncertainty.cpu().numpy(), columns= ['total_uncertainty']), 
         ], axis=1)
 
         create_results_directory()

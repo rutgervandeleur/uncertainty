@@ -378,8 +378,8 @@ class ECGResNet_VariationalInference(nn.Module):
         Args:
             data: the data point to forward
         """
-        samples = torch.empty((data.shape[0], self.n_weight_samples, self.num_classes))
-        samples_no_sm = torch.empty((data.shape[0], self.n_weight_samples, self.num_classes))
+        samples = torch.empty((data.shape[0], self.n_weight_samples, self.num_classes)).type_as(data)
+        samples_no_sm = torch.empty((data.shape[0], self.n_weight_samples, self.num_classes)).type_as(data)
         
         for i in range(self.n_weight_samples):
             # forward push
@@ -391,9 +391,9 @@ class ECGResNet_VariationalInference(nn.Module):
             samples_no_sm[:, i] = output2
         
         # Calculate mean and variance over the samples, return results
-        sample_mean = samples.mean(dim=1)
-        sample_mean_no_sm = samples_no_sm.mean(dim=1)
-        sample_var = samples.var(dim=1)
+        sample_mean = samples.mean(dim=1).type_as(data)
+        sample_mean_no_sm = samples_no_sm.mean(dim=1).type_as(data)
+        sample_var = samples.var(dim=1).type_as(data)
         
         return samples, sample_mean, sample_var, samples_no_sm, sample_mean_no_sm
 
@@ -484,8 +484,8 @@ def decompose_uncertainty(predictions, apply_Softmax=False):
         predictions = F.Softmax(predictions, dim=1)
         
     # Use biased variance because it is equivalent to calculations done by Shridhar
-    epistemic_uncertainty = predictions.var(dim=1, unbiased=False)
-    aleatoric_uncertainty = (predictions - predictions**2).mean(dim=1)
+    epistemic_uncertainty = predictions.var(dim=1, unbiased=False).type_as(predictions)
+    aleatoric_uncertainty = (predictions - predictions**2).mean(dim=1).type_as(predictions)
 
     return epistemic_uncertainty, aleatoric_uncertainty 
 

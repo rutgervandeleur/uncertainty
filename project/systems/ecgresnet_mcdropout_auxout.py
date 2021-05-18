@@ -47,6 +47,7 @@ class ECGResNetMCDropout_AuxOutSystem(pl.LightningModule):
         self.n_dropout_samples = n_dropout_samples
         self.n_logit_samples = n_logit_samples
 
+
         self.register_buffer('IDs', torch.empty(0).type(torch.LongTensor))
         self.register_buffer('predicted_labels', torch.empty(0).type(torch.LongTensor))
         self.register_buffer('correct_predictions', torch.empty(0).type(torch.BoolTensor))
