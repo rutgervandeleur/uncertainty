@@ -165,10 +165,10 @@ class ECGResNet_MCDropout_AuxOutput(nn.Module):
             log_variances[:, i] = output2_log_var
         
         # Calculate mean and variance over the predictions, mean over log_variances, return results
-        predictions_mean = predictions.mean(dim=1)
-        predictions_mean_no_sm = predictions_no_sm.mean(dim=1)
-        predictions_var = predictions.var(dim=1)
-        log_variances_mean = log_variances.mean(dim=1)
+        predictions_mean = predictions.mean(dim=1).type_as(data)
+        predictions_mean_no_sm = predictions_no_sm.mean(dim=1).type_as(data)
+        predictions_var = predictions.var(dim=1).type_as(data)
+        log_variances_mean = log_variances.mean(dim=1).type_as(data)
         
         return predictions, predictions_mean, predictions_var, log_variances_mean, predictions_mean_no_sm 
 

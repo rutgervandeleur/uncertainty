@@ -141,8 +141,8 @@ class ECGResNet_MCDropout(nn.Module):
             samples[:, i] = predictions
         
         # Calculate mean and variance over the samples, return results
-        sample_mean = samples.mean(dim=1)
-        sample_var = samples.var(dim=1)
+        sample_mean = samples.mean(dim=1).type_as(data)
+        sample_var = samples.var(dim=1).type_as(data)
         
         return samples, sample_mean, sample_var
 
