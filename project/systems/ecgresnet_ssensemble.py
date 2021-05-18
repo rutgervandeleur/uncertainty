@@ -53,19 +53,24 @@ class ECGResNetSnapshotEnsembleSystem(pl.LightningModule):
         self.initial_lr = initial_lr
         self.cyclical_learning_rate_type = cyclical_learning_rate_type
 
-        self.IDs = torch.empty(0).type(torch.LongTensor)
-        self.predicted_labels = torch.empty(0).type(torch.LongTensor)
-        self.correct_predictions = torch.empty(0).type(torch.BoolTensor)
-        self.epistemic_uncertainty = torch.empty(0).type(torch.FloatTensor)
+        self.register_buffer('IDs', torch.empty(0).type(torch.LongTensor))
+        self.register_buffer('predicted_labels', torch.empty(0).type(torch.LongTensor))
+        self.register_buffer('correct_predictions', torch.empty(0).type(torch.BoolTensor))
+        self.register_buffer('epistemic_uncertainty', torch.empty(0).type(torch.FloatTensor))
 
         self.models = []
         self.optimizers = []
-        
+
+        # Device needs to be selected because PyTorch Lightning does not
+        # recognize multiple models when in list
+        manual_device = torch.device('cuda' if torch.cuda.is_available() and kwargs['gpus'] != 0 else 'cpu')
+        self.manual_device = manual_device
+
         # Initialize a single model during training
         self.models.append(ECGResNet(in_channels, 
                            n_grps, N, num_classes, 
                            dropout, first_width, 
-                           stride, dilation))
+                           stride, dilation).to(manual_device))
 
         if loss_weights is not None:
             weights = torch.tensor(loss_weights, dtype = torch.float)
@@ -182,7 +187,7 @@ class ECGResNetSnapshotEnsembleSystem(pl.LightningModule):
             self.models.append(ECGResNet(self.hparams.in_channels, 
                            self.hparams.n_grps, self.hparams.N, self.hparams.num_classes, 
                            self.hparams.dropout, self.hparams.first_width, 
-                           self.hparams.stride, self.hparams.dilation))
+                           self.hparams.stride, self.hparams.dilation).to(self.manual_device))
 
             model_path = 'weights/ssensemble_model{}.pt'.format(i+1)
             checkpoint = torch.load(model_path)
@@ -202,15 +207,15 @@ class ECGResNetSnapshotEnsembleSystem(pl.LightningModule):
             prediction_individual[:, i] = output2.data
             
         # Calculate mean and variance over predictions from individual ensemble members
-        prediction_ensemble_mean = F.softmax(torch.mean(prediction_individual, dim=1), dim=1)
-        prediction_ensemble_var = torch.var(prediction_individual, dim=1)
+        prediction_ensemble_mean = F.softmax(torch.mean(prediction_individual, dim=1), dim=1).type_as(data)
+        prediction_ensemble_var = torch.var(prediction_individual, dim=1).type_as(data)
     
         test_loss = self.loss(prediction_ensemble_mean, target)
         acc = FM.accuracy(prediction_ensemble_mean, target)
 
         # Get the variance of the predicted labels by selecting the variance of
         # the labels with highest average Softmax value
-        predicted_labels_var = torch.gather(prediction_ensemble_var, 1, prediction_ensemble_mean.argmax(dim=1).unsqueeze_(1))[:, 0].cpu()
+        predicted_labels_var = torch.gather(prediction_ensemble_var, 1, prediction_ensemble_mean.argmax(dim=1).unsqueeze_(1))[:, 0]
         predicted_labels = prediction_ensemble_mean.argmax(dim=1)
         
         # Log and save metrics
@@ -220,7 +225,7 @@ class ECGResNetSnapshotEnsembleSystem(pl.LightningModule):
         self.IDs = torch.cat((self.IDs, batch['id']), 0)
         self.predicted_labels = torch.cat((self.predicted_labels, predicted_labels), 0)
         self.epistemic_uncertainty = torch.cat((self.epistemic_uncertainty, predicted_labels_var), 0)
-        self.correct_predictions = torch.cat((self.correct_predictions, torch.eq(predicted_labels, target.data.cpu())), 0)
+        self.correct_predictions = torch.cat((self.correct_predictions, torch.eq(predicted_labels, target.data)), 0)
 
         return {'test_loss': test_loss.item(), 'test_acc': acc.item(), 'test_loss': test_loss.item()}
 
@@ -282,10 +287,10 @@ class ECGResNetSnapshotEnsembleSystem(pl.LightningModule):
         Combine results into single dataframe and save to disk as .csv file
         """
         results = pd.concat([
-            pd.DataFrame(self.IDs.numpy(), columns= ['ID']),  
-            pd.DataFrame(self.predicted_labels.numpy(), columns= ['predicted_label']),
-            pd.DataFrame(self.correct_predictions.numpy(), columns= ['correct_prediction']),
-            pd.DataFrame(self.epistemic_uncertainty.numpy(), columns= ['epistemic_uncertainty']), 
+            pd.DataFrame(self.IDs.cpu().numpy(), columns= ['ID']),  
+            pd.DataFrame(self.predicted_labels.cpu().numpy(), columns= ['predicted_label']),
+            pd.DataFrame(self.correct_predictions.cpu().numpy(), columns= ['correct_prediction']),
+            pd.DataFrame(self.epistemic_uncertainty.cpu().numpy(), columns= ['epistemic_uncertainty']), 
         ], axis=1)
         create_results_directory()
         results.to_csv('results/{}_{}_results.csv'.format(self.__class__.__name__, datetime.datetime.now().replace(microsecond=0).isoformat()), index=False)

@@ -95,7 +95,7 @@ class BayesLinear(nn.Module):
         """
         Returns the Kullback-Leibler divergence between the prior and the posterior of Bayesian layer.
         """
-        return calculate_kl(torch.Tensor([self.mu_prior_init]), torch.exp(torch.Tensor([self.log_sigma_prior_init])),
+        return calculate_kl(torch.Tensor([self.mu_prior_init]).type_as(self.w_mu), torch.exp(torch.Tensor([self.log_sigma_prior_init]).type_as(self.w_mu)),
                             self.w_mu, torch.exp(self.w_log_sigma))
 
 class BayesConv1d(nn.Module):
@@ -192,7 +192,7 @@ class BayesConv1d(nn.Module):
         """
         Returns the Kullback-Leibler divergence between the prior and the posterior of Bayesian layer.
         """
-        return calculate_kl(torch.Tensor([self.mu_prior_init]), torch.exp(torch.Tensor([self.log_sigma_prior_init])),
+        return calculate_kl(torch.Tensor([self.mu_prior_init]).type_as(self.w_mu), torch.exp(torch.Tensor([self.log_sigma_prior_init]).type_as(self.w_mu)),
                             self.w_mu, torch.exp(self.w_log_sigma))
 
 class BayesBasicBlock(nn.Module):
@@ -378,8 +378,8 @@ class ECGResNet_VariationalInference(nn.Module):
         Args:
             data: the data point to forward
         """
-        samples = torch.empty((data.shape[0], self.n_weight_samples, self.num_classes))
-        samples_no_sm = torch.empty((data.shape[0], self.n_weight_samples, self.num_classes))
+        samples = torch.empty((data.shape[0], self.n_weight_samples, self.num_classes)).type_as(data)
+        samples_no_sm = torch.empty((data.shape[0], self.n_weight_samples, self.num_classes)).type_as(data)
         
         for i in range(self.n_weight_samples):
             # forward push
@@ -391,9 +391,9 @@ class ECGResNet_VariationalInference(nn.Module):
             samples_no_sm[:, i] = output2
         
         # Calculate mean and variance over the samples, return results
-        sample_mean = samples.mean(dim=1)
-        sample_mean_no_sm = samples_no_sm.mean(dim=1)
-        sample_var = samples.var(dim=1)
+        sample_mean = samples.mean(dim=1).type_as(data)
+        sample_mean_no_sm = samples_no_sm.mean(dim=1).type_as(data)
+        sample_var = samples.var(dim=1).type_as(data)
         
         return samples, sample_mean, sample_var, samples_no_sm, sample_mean_no_sm
 
@@ -430,14 +430,15 @@ def calculate_kl(mu_p, sig_p, mu_q, sig_q):
     kl = 0.5 * (2 * torch.log(sig_p/ sig_q) - 1 + (sig_q / sig_p).pow(2) + ((mu_p - mu_q) / sig_p).pow(2)).sum()
     return kl
 
-def kldiv(model):
+def kldiv(model, kl_init):
     """
     Cumulatively calculates the Kullback-Leibler divergence between the prior and the variational posterior for the whole network
     """
-    kl = torch.Tensor([0.0])
+    kl = torch.clone(kl_init)
+
     for c in model.children():
         if hasattr(c, 'children'):
-            kl += kldiv(c)
+            kl += kldiv(c, kl_init)
         if hasattr(c, 'kl'):
             kl += c.kl()
     return kl
@@ -483,8 +484,8 @@ def decompose_uncertainty(predictions, apply_Softmax=False):
         predictions = F.Softmax(predictions, dim=1)
         
     # Use biased variance because it is equivalent to calculations done by Shridhar
-    epistemic_uncertainty = predictions.var(dim=1, unbiased=False)
-    aleatoric_uncertainty = (predictions - predictions**2).mean(dim=1)
+    epistemic_uncertainty = predictions.var(dim=1, unbiased=False).type_as(predictions)
+    aleatoric_uncertainty = (predictions - predictions**2).mean(dim=1).type_as(predictions)
 
     return epistemic_uncertainty, aleatoric_uncertainty 
 

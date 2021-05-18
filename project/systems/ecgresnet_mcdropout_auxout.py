@@ -47,12 +47,13 @@ class ECGResNetMCDropout_AuxOutSystem(pl.LightningModule):
         self.n_dropout_samples = n_dropout_samples
         self.n_logit_samples = n_logit_samples
 
-        self.IDs = torch.empty(0).type(torch.LongTensor)
-        self.predicted_labels = torch.empty(0).type(torch.LongTensor)
-        self.correct_predictions = torch.empty(0).type(torch.BoolTensor)
-        self.aleatoric_uncertainty = torch.empty(0).type(torch.FloatTensor)
-        self.epistemic_uncertainty = torch.empty(0).type(torch.FloatTensor)
-        self.total_uncertainty = torch.empty(0).type(torch.FloatTensor)
+
+        self.register_buffer('IDs', torch.empty(0).type(torch.LongTensor))
+        self.register_buffer('predicted_labels', torch.empty(0).type(torch.LongTensor))
+        self.register_buffer('correct_predictions', torch.empty(0).type(torch.BoolTensor))
+        self.register_buffer('aleatoric_uncertainty', torch.empty(0).type(torch.FloatTensor))
+        self.register_buffer('epistemic_uncertainty', torch.empty(0).type(torch.FloatTensor))
+        self.register_buffer('total_uncertainty', torch.empty(0).type(torch.FloatTensor))
 
         self.model = ECGResNet_MCDropout_AuxOutput(in_channels, 
                                n_grps, N, num_classes, 
@@ -144,7 +145,7 @@ class ECGResNetMCDropout_AuxOutSystem(pl.LightningModule):
         # Take exponent to get the variance
         output2_var = log_variances_mean.exp()
 
-        predicted_labels = predictions_mean.argmax(dim=1)
+        predicted_labels = predictions_mean.argmax(dim=1).type_as(data)
         correct_predictions = torch.eq(predicted_labels, target)
 
         # MC dropout variance over predicted labels (epistemic uncertainty)
@@ -157,7 +158,7 @@ class ECGResNetMCDropout_AuxOutSystem(pl.LightningModule):
         total_var = predicted_labels_predicted_var + sampled_var
         
         # Get metrics
-        test_loss = self.loss(predictions_mean, target)
+        test_loss = self.loss(predictions_mean.type_as(data), target)
         acc = FM.accuracy(predictions_mean, target)
 
         self.log('test_acc', acc.item())
@@ -192,12 +193,12 @@ class ECGResNetMCDropout_AuxOutSystem(pl.LightningModule):
         Combine results into single dataframe and save to disk as .csv file
         """
         results = pd.concat([
-            pd.DataFrame(self.IDs.numpy(), columns= ['ID']),  
-            pd.DataFrame(self.predicted_labels.numpy(), columns= ['predicted_label']),
-            pd.DataFrame(self.correct_predictions.numpy(), columns= ['correct_prediction']),
-            pd.DataFrame(self.aleatoric_uncertainty.numpy(), columns= ['aleatoric_uncertainty']), 
-            pd.DataFrame(self.epistemic_uncertainty.numpy(), columns= ['epistemic_uncertainty']), 
-            pd.DataFrame(self.total_uncertainty.numpy(), columns= ['total_uncertainty']), 
+            pd.DataFrame(self.IDs.cpu().numpy(), columns= ['ID']),  
+            pd.DataFrame(self.predicted_labels.cpu().numpy(), columns= ['predicted_label']),
+            pd.DataFrame(self.correct_predictions.cpu().numpy(), columns= ['correct_prediction']),
+            pd.DataFrame(self.aleatoric_uncertainty.cpu().numpy(), columns= ['aleatoric_uncertainty']), 
+            pd.DataFrame(self.epistemic_uncertainty.cpu().numpy(), columns= ['epistemic_uncertainty']), 
+            pd.DataFrame(self.total_uncertainty.cpu().numpy(), columns= ['total_uncertainty']), 
         ], axis=1)
 
         create_results_directory()

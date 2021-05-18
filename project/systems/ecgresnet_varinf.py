@@ -60,10 +60,13 @@ class ECGResNetVariationalInferenceSystem(pl.LightningModule):
         self.val_dataset_size = val_dataset_size
         self.batch_size = batch_size 
 
-        self.IDs = torch.empty(0).type(torch.LongTensor)
-        self.predicted_labels = torch.empty(0).type(torch.LongTensor)
-        self.correct_predictions = torch.empty(0).type(torch.BoolTensor)
-        self.epistemic_uncertainty = torch.empty(0).type(torch.FloatTensor)
+        # Register initial KL divergence to remain device-agnostic
+        self.register_buffer('kl_init', torch.Tensor([0.0]))
+
+        self.register_buffer('IDs', torch.empty(0).type(torch.LongTensor))
+        self.register_buffer('predicted_labels', torch.empty(0).type(torch.LongTensor))
+        self.register_buffer('correct_predictions', torch.empty(0).type(torch.BoolTensor))
+        self.register_buffer('epistemic_uncertainty', torch.empty(0).type(torch.FloatTensor))
 
         self.model = ECGResNet_VariationalInference(in_channels, 
                                n_grps, N, num_classes, 
@@ -109,7 +112,7 @@ class ECGResNetVariationalInferenceSystem(pl.LightningModule):
         train_loss2 = self.loss(output2, target)
 
         # Calculate kl divergence over all Bayesian layers
-        kl_clean = kldiv(self.model) 
+        kl_clean = kldiv(self.model, self.kl_init) 
     
         # Weight the KL divergence, so it does not overflow the loss term
         kl = self.model.weight_kl(kl_clean, self.train_dataset_size)
@@ -141,7 +144,7 @@ class ECGResNetVariationalInferenceSystem(pl.LightningModule):
         val_loss = self.loss(output2, target)
         
         # Calculate KL divergence between the approximate posterior and the prior over all Bayesian layers
-        kl_clean = kldiv(self.model) 
+        kl_clean = kldiv(self.model, self.kl_init) 
 
         # Weight the KL divergence, so it does not overflow the loss term
         kl = self.model.weight_kl(kl_clean, self.val_dataset_size)      
@@ -210,10 +213,10 @@ class ECGResNetVariationalInferenceSystem(pl.LightningModule):
         Combine results into single dataframe and save to disk as .csv file
         """
         results = pd.concat([
-            pd.DataFrame(self.IDs.numpy(), columns= ['ID']),  
-            pd.DataFrame(self.predicted_labels.numpy(), columns= ['predicted_label']),
-            pd.DataFrame(self.correct_predictions.numpy(), columns= ['correct_prediction']),
-            pd.DataFrame(self.epistemic_uncertainty.numpy(), columns= ['epistemic_uncertainty']), 
+            pd.DataFrame(self.IDs.cpu().numpy(), columns= ['ID']),  
+            pd.DataFrame(self.predicted_labels.cpu().numpy(), columns= ['predicted_label']),
+            pd.DataFrame(self.correct_predictions.cpu().numpy(), columns= ['correct_prediction']),
+            pd.DataFrame(self.epistemic_uncertainty.cpu().numpy(), columns= ['epistemic_uncertainty']), 
         ], axis=1)
 
         create_results_directory()

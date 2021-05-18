@@ -45,10 +45,10 @@ class ECGResNetAuxOutSystem(pl.LightningModule):
         self.learning_rate = learning_rate
         self.n_logit_samples = n_logit_samples
 
-        self.IDs = torch.empty(0).type(torch.LongTensor)
-        self.predicted_labels = torch.empty(0).type(torch.LongTensor)
-        self.correct_predictions = torch.empty(0).type(torch.BoolTensor)
-        self.aleatoric_uncertainty = torch.empty(0).type(torch.FloatTensor)
+        self.register_buffer('IDs', torch.empty(0).type(torch.LongTensor))
+        self.register_buffer('predicted_labels', torch.empty(0).type(torch.LongTensor))
+        self.register_buffer('correct_predictions', torch.empty(0).type(torch.BoolTensor))
+        self.register_buffer('aleatoric_uncertainty', torch.empty(0).type(torch.FloatTensor))
 
         self.model = ECGResNet_AuxOut(in_channels, 
                                n_grps, N, num_classes, 
@@ -131,7 +131,7 @@ class ECGResNetAuxOutSystem(pl.LightningModule):
         _, output2_mean, output2_log_var = self(data)
             
         # Sample from logits, returning a  vector x_i
-        x_i = self.model.sample_logits(self.n_logit_samples, output2_mean, output2_log_var, average=True)
+        x_i = self.model.sample_logits(self.n_logit_samples, output2_mean, output2_log_var, average=True).type_as(data)
         
         # Apply softmax to obtain probability vector p_i
         p_i = F.softmax(x_i, dim=1)
@@ -181,10 +181,10 @@ class ECGResNetAuxOutSystem(pl.LightningModule):
         """
 
         results = pd.concat([
-            pd.DataFrame(self.IDs.numpy(), columns= ['ID']),  
-            pd.DataFrame(self.predicted_labels.numpy(), columns= ['predicted_label']),
-            pd.DataFrame(self.correct_predictions.numpy(), columns= ['correct_prediction']),
-            pd.DataFrame(self.aleatoric_uncertainty.numpy(), columns= ['aleatoric_uncertainty']), 
+            pd.DataFrame(self.IDs.cpu().numpy(), columns= ['ID']),  
+            pd.DataFrame(self.predicted_labels.cpu().numpy(), columns= ['predicted_label']),
+            pd.DataFrame(self.correct_predictions.cpu().numpy(), columns= ['correct_prediction']),
+            pd.DataFrame(self.aleatoric_uncertainty.cpu().numpy(), columns= ['aleatoric_uncertainty']), 
         ], axis=1)
 
         create_results_directory()

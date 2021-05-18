@@ -55,19 +55,24 @@ class ECGResNetSnapshotEnsemble_AuxOutSystem(pl.LightningModule):
         self.cyclical_learning_rate_type = cyclical_learning_rate_type
         self.n_logit_samples = n_logit_samples
 
-        self.IDs = torch.empty(0).type(torch.LongTensor)
-        self.predicted_labels = torch.empty(0).type(torch.LongTensor)
-        self.correct_predictions = torch.empty(0).type(torch.BoolTensor)
-        self.epistemic_uncertainty = torch.empty(0).type(torch.FloatTensor)
-        self.aleatoric_uncertainty = torch.empty(0).type(torch.FloatTensor)
-        self.total_uncertainty = torch.empty(0).type(torch.FloatTensor)
+        self.register_buffer('IDs', torch.empty(0).type(torch.LongTensor))
+        self.register_buffer('predicted_labels', torch.empty(0).type(torch.LongTensor))
+        self.register_buffer('correct_predictions', torch.empty(0).type(torch.BoolTensor))
+        self.register_buffer('aleatoric_uncertainty', torch.empty(0).type(torch.FloatTensor))
+        self.register_buffer('epistemic_uncertainty', torch.empty(0).type(torch.FloatTensor))
+        self.register_buffer('total_uncertainty', torch.empty(0).type(torch.FloatTensor))
 
         self.models = []
         self.optimizers = []
+
+        # Device needs to be selected because PyTorch Lightning does not
+        # recognize multiple models when in list
+        self.manual_device = torch.device('cuda' if torch.cuda.is_available() and kwargs['gpus'] != 0 else 'cpu')
+
         self.models.append(ECGResNet_AuxOut(in_channels, 
                                n_grps, N, num_classes, 
                                dropout, first_width, 
-                               stride, dilation)
+                               stride, dilation).to(self.manual_device)
                               )
         if loss_weights is not None:
             weights = torch.tensor(loss_weights, dtype = torch.float)
@@ -193,9 +198,7 @@ class ECGResNetSnapshotEnsemble_AuxOutSystem(pl.LightningModule):
             self.models.append(ECGResNet_AuxOut(self.hparams.in_channels, 
                                self.hparams.n_grps, self.hparams.N, self.hparams.num_classes, 
                                self.hparams.dropout, self.hparams.first_width, 
-                               self.hparams.stride, self.hparams.dilation, self.hparams.n_logit_samples)
-                              )
-
+                               self.hparams.stride, self.hparams.dilation).to(self.manual_device))
 
             model_path = 'weights/ssensemble_auxout_model{}.pt'.format(model_idx+1)
             checkpoint = torch.load(model_path)
@@ -225,11 +228,11 @@ class ECGResNetSnapshotEnsemble_AuxOutSystem(pl.LightningModule):
             aleatoric_var[:, model_idx] = output2_var.data
             
         # Calculate mean and variance over predictions from individual ensemble members
-        prediction_ensemble_mean = F.softmax(torch.mean(prediction_individual, dim=1), dim=1)
-        prediction_ensemble_var = torch.var(prediction_individual, dim=1)
+        prediction_ensemble_mean = F.softmax(torch.mean(prediction_individual, dim=1), dim=1).type_as(data)
+        prediction_ensemble_var = torch.var(prediction_individual, dim=1).type_as(data)
 
         # Get the average aleatoric uncertainty for each prediction
-        prediction_aleatoric_var = torch.mean(aleatoric_var, dim=1)
+        prediction_aleatoric_var = torch.mean(aleatoric_var, dim=1).type_as(data)
 
         # Select the predicted labels
         predicted_labels = prediction_ensemble_mean.argmax(dim=1)
@@ -239,11 +242,11 @@ class ECGResNetSnapshotEnsemble_AuxOutSystem(pl.LightningModule):
 
         # Get the epistemic variance of the predicted labels by selecting the variance of
         # the labels with highest average Softmax value
-        predicted_labels_var = torch.gather(prediction_ensemble_var, 1, prediction_ensemble_mean.argmax(dim=1).unsqueeze_(1))[:, 0].cpu()
+        predicted_labels_var = torch.gather(prediction_ensemble_var, 1, prediction_ensemble_mean.argmax(dim=1).unsqueeze_(1))[:, 0]
 
         # Get the aleatoric variance of the predicted labels by selecting the variance of
         # the labels with highest average Softmax value
-        predicted_labels_aleatoric_var = torch.gather(prediction_aleatoric_var, 1, prediction_ensemble_mean.argmax(dim=1).unsqueeze_(1))[:, 0].cpu()
+        predicted_labels_aleatoric_var = torch.gather(prediction_aleatoric_var, 1, prediction_ensemble_mean.argmax(dim=1).unsqueeze_(1))[:, 0]
 
         total_var = predicted_labels_var + predicted_labels_aleatoric_var
         
@@ -256,7 +259,7 @@ class ECGResNetSnapshotEnsemble_AuxOutSystem(pl.LightningModule):
         self.epistemic_uncertainty = torch.cat((self.epistemic_uncertainty, predicted_labels_var), 0)
         self.aleatoric_uncertainty = torch.cat((self.aleatoric_uncertainty, predicted_labels_aleatoric_var), 0)
         self.total_uncertainty = torch.cat((self.total_uncertainty, total_var), 0)
-        self.correct_predictions = torch.cat((self.correct_predictions, torch.eq(predicted_labels, target.data.cpu())), 0)
+        self.correct_predictions = torch.cat((self.correct_predictions, torch.eq(predicted_labels, target.data)), 0)
 
         return {'test_loss': test_loss.item(), 'test_acc': acc.item(), 'test_loss': test_loss.item()}
 
@@ -319,12 +322,12 @@ class ECGResNetSnapshotEnsemble_AuxOutSystem(pl.LightningModule):
         Combine results into single dataframe and save to disk as .csv file
         """
         results = pd.concat([
-            pd.DataFrame(self.IDs.numpy(), columns= ['ID']),  
-            pd.DataFrame(self.predicted_labels.numpy(), columns= ['predicted_label']),
-            pd.DataFrame(self.correct_predictions.numpy(), columns= ['correct_prediction']),
-            pd.DataFrame(self.epistemic_uncertainty.numpy(), columns= ['epistemic_uncertainty']), 
-            pd.DataFrame(self.aleatoric_uncertainty.numpy(), columns= ['aleatoric_uncertainty']), 
-            pd.DataFrame(self.total_uncertainty.numpy(), columns= ['total_uncertainty']), 
+            pd.DataFrame(self.IDs.cpu().numpy(), columns= ['ID']),  
+            pd.DataFrame(self.predicted_labels.cpu().numpy(), columns= ['predicted_label']),
+            pd.DataFrame(self.correct_predictions.cpu().numpy(), columns= ['correct_prediction']),
+            pd.DataFrame(self.epistemic_uncertainty.cpu().numpy(), columns= ['epistemic_uncertainty']), 
+            pd.DataFrame(self.aleatoric_uncertainty.cpu().numpy(), columns= ['aleatoric_uncertainty']), 
+            pd.DataFrame(self.total_uncertainty.cpu().numpy(), columns= ['total_uncertainty']), 
         ], axis=1)
 
         create_results_directory()

@@ -47,10 +47,15 @@ class ECGResNetMCDropoutSystem(pl.LightningModule):
         self.save_hyperparameters()
         self.learning_rate = learning_rate
 
-        self.IDs = torch.empty(0).type(torch.LongTensor)
-        self.predicted_labels = torch.empty(0).type(torch.LongTensor)
-        self.correct_predictions = torch.empty(0).type(torch.BoolTensor)
-        self.epistemic_uncertainty = torch.empty(0).type(torch.FloatTensor)
+        self.register_buffer('IDs', torch.empty(0).type(torch.LongTensor))
+        self.register_buffer('predicted_labels', torch.empty(0).type(torch.LongTensor))
+        self.register_buffer('correct_predictions', torch.empty(0).type(torch.BoolTensor))
+        self.register_buffer('epistemic_uncertainty', torch.empty(0).type(torch.FloatTensor))
+
+        # self.IDs = torch.empty(0).type(torch.LongTensor)
+        # self.predicted_labels = torch.empty(0).type(torch.LongTensor)
+        # self.correct_predictions = torch.empty(0).type(torch.BoolTensor)
+        # self.epistemic_uncertainty = torch.empty(0).type(torch.FloatTensor)
 
         self.model = ECGResNet_MCDropout(in_channels, 
                                n_grps, N, num_classes, 
@@ -120,11 +125,11 @@ class ECGResNetMCDropoutSystem(pl.LightningModule):
         samples, sample_mean, sample_var = self.model.mc_sample(data)
         
         # Get predicted labels by choosing the labels with the highest average Softmax value
-        predicted_labels = sample_mean.argmax(dim=1).cpu()
+        predicted_labels = sample_mean.argmax(dim=1)
 
         # Get the variance of the predicted labels by selecting the variance of
         # the labels with highest average Softmax value
-        predicted_labels_var = torch.gather(sample_var, 1, sample_mean.argmax(dim=1).unsqueeze_(1))[:, 0].cpu()
+        predicted_labels_var = torch.gather(sample_var, 1, sample_mean.argmax(dim=1).unsqueeze_(1))[:, 0]
         
         # Get metrics
         test_loss = self.loss(sample_mean, target)
@@ -136,7 +141,7 @@ class ECGResNetMCDropoutSystem(pl.LightningModule):
         self.IDs = torch.cat((self.IDs, batch['id']), 0)
         self.predicted_labels = torch.cat((self.predicted_labels, predicted_labels), 0)
         self.epistemic_uncertainty = torch.cat((self.epistemic_uncertainty, predicted_labels_var), 0)
-        self.correct_predictions = torch.cat((self.correct_predictions, torch.eq(predicted_labels, target.data.cpu())), 0)
+        self.correct_predictions = torch.cat((self.correct_predictions, torch.eq(predicted_labels, target.data)), 0)
 
         return {'test_loss': test_loss.item(), 'test_acc': acc.item(), 'test_loss': test_loss.item()}
 
@@ -159,10 +164,10 @@ class ECGResNetMCDropoutSystem(pl.LightningModule):
         Combine results into single dataframe and save to disk as .csv file
         """
         results = pd.concat([
-            pd.DataFrame(self.IDs.numpy(), columns= ['ID']),  
-            pd.DataFrame(self.predicted_labels.numpy(), columns= ['predicted_label']),
-            pd.DataFrame(self.correct_predictions.numpy(), columns= ['correct_prediction']),
-            pd.DataFrame(self.epistemic_uncertainty.numpy(), columns= ['epistemic_uncertainty']), 
+            pd.DataFrame(self.IDs.cpu().numpy(), columns= ['ID']),  
+            pd.DataFrame(self.predicted_labels.cpu().numpy(), columns= ['predicted_label']),
+            pd.DataFrame(self.correct_predictions.cpu().numpy(), columns= ['correct_prediction']),
+            pd.DataFrame(self.epistemic_uncertainty.cpu().numpy(), columns= ['epistemic_uncertainty']), 
         ], axis=1)
 
         create_results_directory()
