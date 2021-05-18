@@ -24,7 +24,7 @@ class ECGResNetEnsembleSystem(pl.LightningModule):
 
     def __init__(self, in_channels, n_grps, N, 
                  num_classes, dropout, first_width, stride, 
-                 dilation, learning_rate, ensemble_size, loss_weights=None, 
+                 dilation, learning_rate, ensemble_size, loss_weights=None,
                  **kwargs):
         """
         Initializes the ECGResNetEnsembleSystem
@@ -58,12 +58,16 @@ class ECGResNetEnsembleSystem(pl.LightningModule):
         self.models = []
         self.optimizers = []
 
+        # Device needs to be selected because PyTorch Lightning does not
+        # recognize multiple models when in list
+        manual_device = torch.device('cuda' if torch.cuda.is_available() and kwargs['gpus'] != 0 else 'cpu')
+
         # Initialize mutliple ensemble members
         for i in range(self.ensemble_size):
             self.models.append(ECGResNet(in_channels, 
                                n_grps, N, num_classes, 
                                dropout, first_width, 
-                               stride, dilation))
+                               stride, dilation).to(manual_device))
 
         if loss_weights is not None:
             weights = torch.tensor(loss_weights, dtype = torch.float)
@@ -133,7 +137,7 @@ class ECGResNetEnsembleSystem(pl.LightningModule):
             prediction_individual[:, i] = output2.data
             
         # Calculate mean and variance over predictions from individual ensemble members
-        prediction_ensemble_mean = F.softmax(torch.mean(prediction_individual, dim=1), dim=1)
+        prediction_ensemble_mean = F.softmax(torch.mean(prediction_individual, dim=1), dim=1).type_as(data)
         prediction_ensemble_var = torch.var(prediction_individual, dim=1)
     
         val_loss = self.loss(prediction_ensemble_mean, target)
